@@ -20,20 +20,26 @@ AromaFGFrameOutput output{};
 output.struct_size = sizeof(output);
 
 AromaFGStatus status = aroma_fg_process(engine, &input, &output);
-if (status != AROMA_FG_OK) {
-    // A backend may have recorded a partial command sequence before failing.
-    // Discard/reset this command buffer before releasing the transaction.
+if (status == AROMA_FG_BYPASSED) {
+    // No recording transaction was created. Use the real frame path.
+} else if (status != AROMA_FG_OK) {
+    // For a valid, serialized frame call, backend errors may follow partial recording.
+    // Discard/reset the command buffer before releasing that transaction.
     vkResetCommandPool(device, command_pool, 0);
-    aroma_fg_cancel_frame(engine, input.frame_id);
+    (void)aroma_fg_cancel_frame(engine, input.frame_id);
     // Present the real frame / use host fallback.
 } else {
     VkResult submit = vkQueueSubmit(queue, 1, &submit_info, frame_fence);
     if (submit == VK_SUCCESS) {
         // Commit only after the host queue accepted the command buffer.
         status = aroma_fg_commit_frame(engine, input.frame_id);
+        if (status != AROMA_FG_OK) {
+            // Submission already happened: do NOT cancel. Treat as fatal backend/
+            // integration error, wait for the fence, then tear down after quiescence.
+        }
     } else {
         vkResetCommandPool(device, command_pool, 0);
-        aroma_fg_cancel_frame(engine, input.frame_id);
+        (void)aroma_fg_cancel_frame(engine, input.frame_id);
         // Present the real frame / use host fallback.
     }
 }
