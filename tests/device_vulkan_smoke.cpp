@@ -15,7 +15,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBit
  VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* data, void*) {
  if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) validation_errors.fetch_add(1,std::memory_order_relaxed);
  if (severity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
-  std::fprintf(stderr,"VULKAN_VALIDATION: %s\\n",data&&data->pMessage?data->pMessage:"(no message)");
+  std::fprintf(stderr,"VULKAN_VALIDATION: %s\n",data&&data->pMessage?data->pMessage:"(no message)");
  return VK_FALSE;
 }
 bool has_extension(const std::vector<VkExtensionProperties>& xs,const char* name) {
@@ -106,7 +106,7 @@ int main() {
  if(validation_layer){ici.enabledLayerCount=static_cast<uint32_t>(enabled_layers.size());ici.ppEnabledLayerNames=enabled_layers.data();}
  ici.enabledExtensionCount=static_cast<uint32_t>(enabled_extensions.size());ici.ppEnabledExtensionNames=enabled_extensions.data();
  if(sync_validation)ici.pNext=&validation_features;else if(debug_utils)ici.pNext=&debug_info;
- std::printf("VALIDATION_LAYER=%s SYNC_VALIDATION=%s DEBUG_UTILS=%s\\n",
+ std::printf("VALIDATION_LAYER=%s SYNC_VALIDATION=%s DEBUG_UTILS=%s\n",
   validation_layer?"on":"off",sync_validation?"on":"off",debug_utils?"on":"off");
  VkInstance instance=VK_NULL_HANDLE;
  if(vkCreateInstance(&ici,nullptr,&instance)!=VK_SUCCESS)return 10;
@@ -238,6 +238,6 @@ int main() {
  }
  vkDestroyInstance(instance,nullptr);
  const uint32_t validation_error_count=validation_errors.load(std::memory_order_relaxed);
- if(validation_error_count)std::printf("VALIDATION_ERRORS=%u\\n",validation_error_count);
+ if(validation_error_count)std::printf("VALIDATION_ERRORS=%u\n",validation_error_count);
  return (pixel_ok&&validation_error_count==0)?0:27;
 }
