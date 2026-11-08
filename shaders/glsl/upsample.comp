@@ -1,0 +1,14 @@
+#version 450
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=0,rg16f) uniform readonly image2D sourceFlow;
+layout(set=0,binding=1,rg16f) uniform writeonly image2D destinationFlow;
+layout(push_constant) uniform Params {uint width;uint height;float scaleX;float scaleY;} pc;
+vec2 loadClamped(ivec2 p,ivec2 s){return imageLoad(sourceFlow,clamp(p,ivec2(0),s-ivec2(1))).xy;}
+void main(){
+ ivec2 p=ivec2(gl_GlobalInvocationID.xy);if(p.x>=int(pc.width)||p.y>=int(pc.height))return;
+ ivec2 s=imageSize(sourceFlow);vec2 q=(vec2(p)+0.5)*vec2(pc.scaleX,pc.scaleY)-0.5;
+ ivec2 p0=ivec2(floor(q));vec2 f=fract(q);
+ vec2 a=mix(loadClamped(p0,s),loadClamped(p0+ivec2(1,0),s),f.x);
+ vec2 b=mix(loadClamped(p0+ivec2(0,1),s),loadClamped(p0+ivec2(1,1),s),f.x);
+ vec2 flow=mix(a,b,f.y)/vec2(pc.scaleX,pc.scaleY);imageStore(destinationFlow,p,vec4(flow,0,0));
+}
