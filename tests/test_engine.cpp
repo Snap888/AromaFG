@@ -59,7 +59,7 @@ int main() {
     assert(legacy_state.calls==1 && out.generated_frames==1);
     in=frame(3); in.scene_cut=1;
     assert(aroma_fg_process(legacy,&in,&out)==AROMA_FG_OK);
-    assert(legacy_state.resets==1);
+    assert(legacy_state.resets==2); // enable transition + explicit scene cut
     assert(aroma_fg_process(legacy,&in,&out)==AROMA_FG_ERROR_FRAME_ORDER);
     assert(aroma_fg_commit_frame(legacy,3)==AROMA_FG_ERROR_UNSUPPORTED);
     aroma_fg_destroy(legacy);
