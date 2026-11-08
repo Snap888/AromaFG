@@ -27,6 +27,7 @@ if(AROMA_FG_ENABLE_VULKAN)
   endif()
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   find_program(AROMA_FG_GLSLANG_VALIDATOR glslangValidator REQUIRED)
+  find_program(AROMA_FG_SPIRV_VAL spirv-val)
   target_sources(aroma_fg PRIVATE
     src/vulkan/vulkan_backend.cpp
     src/vulkan/vulkan_runtime.cpp)
@@ -42,9 +43,18 @@ if(AROMA_FG_ENABLE_VULKAN)
     add_custom_command(OUTPUT "${SPV}"
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated/spv"
       COMMAND "${AROMA_FG_GLSLANG_VALIDATOR}" -V --target-env vulkan1.1 -S comp "${SHADER}" -o "${SPV}"
-      DEPENDS "${SHADER}"
+    DEPENDS "${SHADER}"
       VERBATIM)
-    list(APPEND AROMA_FG_RUNTIME_SPV "${SPV}")
+    if(AROMA_FG_SPIRV_VAL)
+      add_custom_command(OUTPUT "${SPV}.validated"
+        COMMAND "${AROMA_FG_SPIRV_VAL}" --target-env vulkan1.1 "${SPV}"
+        COMMAND ${CMAKE_COMMAND} -E touch "${SPV}.validated"
+        DEPENDS "${SPV}"
+        VERBATIM)
+      list(APPEND AROMA_FG_RUNTIME_SPV "${SPV}.validated")
+    else()
+      list(APPEND AROMA_FG_RUNTIME_SPV "${SPV}")
+    endif()
     list(APPEND AROMA_FG_EMBED_ARGS "${SHADER_NAME}_comp=${SPV}")
   endforeach()
   set(AROMA_FG_EMBEDDED_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_shaders.hpp")
