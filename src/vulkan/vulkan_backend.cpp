@@ -81,10 +81,10 @@ void image_barrier(VkCommandBuffer c,VkImage image,VkImageAspectFlags aspect,VkA
 }
 std::vector<PyramidLevel> make_pyramid(uint32_t w,uint32_t h,uint32_t max,uint32_t min) {
  std::vector<PyramidLevel> v;if(!w||!h||!max||!min)return v;v.push_back({w,h});
- while(v.size()<max){auto p=v.back();uint32_t nw=std::max(1u,(p.width+1u)/2u),nh=std::max(1u,(p.height+1u)/2u);if(nw<min||nh<min)break;v.push_back({nw,nh});}return v;
+ while(v.size()<max){auto p=v.back();uint32_t nw=std::max(1u,p.width/2u+p.width%2u),nh=std::max(1u,p.height/2u+p.height%2u);if(nw<min||nh<min)break;v.push_back({nw,nh});}return v;
 }
 std::vector<FlowPass> make_flow_schedule(uint32_t levels,uint32_t multiplier) {
- std::vector<FlowPass> p;if(!levels||multiplier<2||multiplier>4)return p;p.push_back({FlowPassKind::Luma,0,0});p.push_back({FlowPassKind::Luma,0,0});
+ std::vector<FlowPass> p;if(!levels||levels>32||multiplier<2||multiplier>4)return p;p.push_back({FlowPassKind::Luma,0,0});p.push_back({FlowPassKind::Luma,0,0});
  for(uint32_t l=1;l<levels;++l){p.push_back({FlowPassKind::Downsample,l,0});p.push_back({FlowPassKind::Downsample,l,0});}
  for(int32_t l=int32_t(levels)-1;l>=0;--l){if(uint32_t(l)!=levels-1){p.push_back({FlowPassKind::UpsampleFlow,uint32_t(l),0});p.push_back({FlowPassKind::UpsampleFlow,uint32_t(l),0});}p.push_back({FlowPassKind::SearchForward,uint32_t(l),0});p.push_back({FlowPassKind::SearchBackward,uint32_t(l),0});}
  p.push_back({FlowPassKind::RefineForward,0,0});p.push_back({FlowPassKind::RefineBackward,0,0});
