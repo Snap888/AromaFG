@@ -1,31 +1,29 @@
 #version 450
-// Baseline phase-specific bidirectional warp. Flow units are pixels at this level.
-layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
-layout(set = 0, binding = 0, rgba16f) uniform readonly image2D previousFrame;
-layout(set = 0, binding = 1, rgba16f) uniform readonly image2D currentFrame;
-layout(set = 0, binding = 2, rg16f) uniform readonly image2D forwardFlow;
-layout(set = 0, binding = 3, rg16f) uniform readonly image2D backwardFlow;
-layout(set = 0, binding = 4, r16f) uniform readonly image2D forwardConfidence;
-layout(set = 0, binding = 5, r16f) uniform readonly image2D backwardConfidence;
-layout(set = 0, binding = 6, rgba16f) uniform writeonly image2D generatedFrame;
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=0) uniform sampler2D previousFrame;
+layout(set=0,binding=1) uniform sampler2D currentFrame;
+layout(set=0,binding=2,rg16f) uniform readonly image2D forwardFlow;
+layout(set=0,binding=3,rg16f) uniform readonly image2D backwardFlow;
+layout(set=0,binding=4,r16f) uniform readonly image2D forwardConfidence;
+layout(set=0,binding=5,r16f) uniform readonly image2D backwardConfidence;
+layout(set=0,binding=6,rgba16f) uniform writeonly image2D generatedFrame;
 layout(push_constant) uniform Params { uint width; uint height; float phase; float confidenceFloor; } pc;
-ivec2 clampCoord(vec2 p, ivec2 size) {
-    return clamp(ivec2(round(p)),ivec2(0),size-ivec2(1));
-}
-void main() {
-    ivec2 p=ivec2(gl_GlobalInvocationID.xy);
-    ivec2 size=imageSize(previousFrame);
-    if(p.x>=int(pc.width)||p.y>=int(pc.height)) return;
-    float t=clamp(pc.phase,0.001,0.999);
-    vec2 f=imageLoad(forwardFlow,p).xy, b=imageLoad(backwardFlow,p).xy;
-    vec2 prevPos=vec2(p)-t*f, currPos=vec2(p)-(1.0-t)*b;
-    vec4 a=imageLoad(previousFrame,clampCoord(prevPos,size));
-    vec4 c=imageLoad(currentFrame,clampCoord(currPos,size));
-    float wa=max(imageLoad(forwardConfidence,p).r,0.0)*(1.0-t);
-    float wc=max(imageLoad(backwardConfidence,p).r,0.0)*t;
-    float sum=wa+wc;
-    vec4 result = sum < max(pc.confidenceFloor,1.0e-4)
-        ? mix(imageLoad(previousFrame,p),imageLoad(currentFrame,p),t)
-        : (a*wa+c*wc)/sum;
-    imageStore(generatedFrame,p,result);
+vec2 clampUv(vec2 uv){return clamp(uv,vec2(0.5)/vec2(pc.width,pc.height),vec2(1.0)-vec2(0.5)/vec2(pc.width,pc.height));}
+void main(){
+ ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+ if(p.x>=int(pc.width)||p.y>=int(pc.height))return;
+ vec2 uv=(vec2(p)+0.5)/vec2(pc.width,pc.height);
+ float t=clamp(pc.phase,0.001,0.999);
+ vec2 f=imageLoad(forwardFlow,p).xy;
+ vec2 b=imageLoad(backwardFlow,p).xy;
+ vec2 prevUv=clampUv(uv-t*f/vec2(pc.width,pc.height));
+ vec2 currUv=clampUv(uv-(1.0-t)*b/vec2(pc.width,pc.height));
+ vec4 a=texture(previousFrame,prevUv), c=texture(currentFrame,currUv);
+ float wa=max(imageLoad(forwardConfidence,p).r,0.0)*(1.0-t);
+ float wc=max(imageLoad(backwardConfidence,p).r,0.0)*t;
+ float sum=wa+wc;
+ vec4 result=sum<max(pc.confidenceFloor,1.0e-4)
+   ? mix(texture(previousFrame,uv),texture(currentFrame,uv),t)
+   : (a*wa+c*wc)/sum;
+ imageStore(generatedFrame,p,result);
 }
