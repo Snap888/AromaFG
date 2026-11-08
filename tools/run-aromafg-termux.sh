@@ -80,7 +80,7 @@ chmod 700 "$RUNNER"
 bash -n "$RUNNER" || fail "Downloaded ADB runner failed bash syntax validation."
 
 REPORT="$HOME/storage/shared/Download/aromafg-device-report.txt"
-if [[ ! -d "$HOME/storage/shared/Download" ]]; then
+if [[ ! -d "$HOME/storage/shared/Download" || ! -w "$HOME/storage/shared/Download" ]]; then
   REPORT="$WORK_DIR/aromafg-device-report.txt"
   printf 'Shared Download folder unavailable; report will be saved to %s\n' "$REPORT"
 fi
