@@ -27,7 +27,7 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] Compare classical optical flow: block matching, LK, DIS, Farneback and pyramid variants.
 - [x] Evaluate mobile inference runtimes and model candidates without assuming realtime suitability.
 - [x] Establish benchmark dataset roles, high-FPS ground-truth protocol and quality metrics.
-- [x] Select DIS-style flow as the first A/B candidate; retain block matching as control and define proposed MVP budgets.
+- [x] Select Win-FG SAD/block-search and WFG DIS/Farneback hybrid as A/B references; retain block matching as control and define proposed MVP budgets.
 - [ ] Complete exact checkpoint/dataset rights review before any such artifact is imported or redistributed.
 - [ ] Review and approve Phase 2 research PR.
 
