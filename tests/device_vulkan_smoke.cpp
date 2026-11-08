@@ -7,12 +7,13 @@
 #include <vector>
 #include <cmath>
 #include <string>
+#include <atomic>
 
 namespace {
-uint32_t validation_errors = 0;
+std::atomic_uint32_t validation_errors{0};
 VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
  VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* data, void*) {
- if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) ++validation_errors;
+ if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) validation_errors.fetch_add(1,std::memory_order_relaxed);
  if (severity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
   std::fprintf(stderr,"VULKAN_VALIDATION: %s\\n",data&&data->pMessage?data->pMessage:"(no message)");
  return VK_FALSE;
@@ -236,6 +237,7 @@ int main() {
   if(destroy_debug)destroy_debug(instance,messenger,nullptr);
  }
  vkDestroyInstance(instance,nullptr);
- if(validation_errors)std::printf("VALIDATION_ERRORS=%u\\n",validation_errors);
- return (pixel_ok&&validation_errors==0)?0:27;
+ const uint32_t validation_error_count=validation_errors.load(std::memory_order_relaxed);
+ if(validation_error_count)std::printf("VALIDATION_ERRORS=%u\\n",validation_error_count);
+ return (pixel_ok&&validation_error_count==0)?0:27;
 }
