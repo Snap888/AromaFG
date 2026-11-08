@@ -14,9 +14,11 @@ int main() {
  for(uint32_t m=2;m<=4;++m) {
    const auto graph=make_flow_schedule(3,m);
    assert(!graph.empty());
-   uint32_t synth=0,forward=0,backward=0,up=0;
+   uint32_t synth=0,forward=0,backward=0,up=0,luma=0,downsample=0;
    float expected=0.0f;
    for(const auto& pass:graph) {
+     if(pass.kind==FlowPassKind::Luma)++luma;
+     if(pass.kind==FlowPassKind::Downsample)++downsample;
      if(pass.kind==FlowPassKind::Synthesize) {
        ++synth; expected+=1.0f/static_cast<float>(m);
        assert(std::fabs(pass.phase-expected)<1.0e-5f);
@@ -25,7 +27,7 @@ int main() {
      if(pass.kind==FlowPassKind::SearchBackward)++backward;
      if(pass.kind==FlowPassKind::UpsampleFlow)++up;
    }
-   assert(synth==m-1 && forward==3 && backward==3 && up==4);
+   assert(synth==m-1 && forward==3 && backward==3 && up==4 && luma==2 && downsample==4);
  }
  assert(make_flow_schedule(0,2).empty());
  assert(make_flow_schedule(3,1).empty());
