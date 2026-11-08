@@ -2,72 +2,87 @@
 
 **Aroma Frame Generation** is a clean-room, Vulkan-based optical-flow frame-generation library for Android (Qualcomm Adreno + Mesa Turnip/proprietary drivers), Winlator/WinNative, DXVK-based hosts and native renderers.
 
-> Status: early bootstrap. The repository contains architecture documentation and a portable C ABI/lifecycle skeleton. It does not yet contain a production Vulkan optical-flow backend. Hardware support and image quality claims require physical-device validation.
+> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. The feature/vulkan-engine-runtime branch adds a baseline Vulkan compute graph and a lavapipe smoke test. No physical Adreno/Turnip or Qualcomm proprietary-driver validation has been completed. This is not yet a production-ready SDK.
 
 ## Goals
 
-- Small embeddable `.so` / `.dll` with a stable, versioned C ABI.
+- Small embeddable .so / .dll with a stable, versioned C ABI.
 - 2× / 3× / 4× temporal synthesis with distinct chronological phases.
-- Bidirectional motion estimation, confidence and forward/backward consistency.
+- Bidirectional motion estimation and forward/backward consistency.
 - Host-owned Vulkan interop: no private device, queue submission, WSI ownership or synchronous GPU waits.
 - Adreno/Turnip-aware compute and memory behavior.
-- Deterministic adaptive workload policy and low-overhead diagnostics.
+- Optional low-overhead diagnostics and deterministic workload policy.
 - Native host-side integration first; Vulkan Layer path is optional and secondary.
+
+## Current implementation snapshot
+
+| Area | Current state |
+|---|---|
+| Portable C ABI / lifecycle | Present on main |
+| GLSL optical-flow passes | Present on feature branches |
+| Vulkan runtime graph | Present on feature/vulkan-engine-runtime |
+| ×2 / ×3 / ×4 phase dispatch | Implemented in runtime branch; software smoke-tested |
+| CI GPU validation | Mesa lavapipe only |
+| Physical Adreno / Turnip | Not tested |
+| Qualcomm proprietary driver | Not tested |
+| Android SDK / Winlator adapters / Vulkan Layer | Not implemented |
+| AI inference / learned refinement | Research only; not implemented |
+| Production image quality and latency | Not established |
+
+The Vulkan runtime branch currently supports RGBA8_UNORM and RGBA16_SFLOAT output slots. It requires the host-created device to have shaderStorageImageExtendedFormats enabled. See docs/vulkan-backend.md for the complete contract and limitations.
 
 ## Architecture principles
 
 1. Estimate motion once per consecutive source-frame pair; reuse it for each generated phase.
 2. Keep capture, command submission, synchronization, swapchain acquisition and presentation owned by the host.
-3. Keep all borrowed Vulkan handles scoped to the callback lifetime.
+3. Borrowed Vulkan handles must remain alive until recorded commands complete; callback payload lifetime and GPU resource lifetime are distinct.
 4. Bypass safely on invalid input, unsupported format/capability, scene discontinuity or backend failure.
 5. Separate compute completion, swapchain acquisition, successful present and physical scanout in metrics.
 6. Treat confidence/risk as measured proxies until calibrated against true high-frame-rate ground truth.
 7. Classical optical flow and warping remain the default; learned refinement is optional research only.
 
-## Quality pipeline
+## Baseline quality pipeline
 
-`luma → pyramid → forward/backward block flow → flow fusion → consistency → phase-specific warp/candidate reconstruction → composite`
+luma → pyramid → forward/backward block flow → consistency refinement → phase-specific synthesis
 
-Planned quality experiments: global-motion pre-warp (C1), edge-preserving flow regularization (C2), occlusion-aware candidate reconstruction, anti-ghost fallback and sharpening. Every experiment must be independently switchable and measured.
+Planned experiments include global-motion pre-warp (C1), edge-preserving flow regularization (C2), occlusion-aware candidate reconstruction, anti-ghost fallback and sharpening. Each must be independently switchable and measured.
 
 ## Repository map
 
-- `include/` — public C ABI.
-- `src/core/` — lifecycle and portable engine skeleton.
-- `src/vulkan/` — planned Vulkan interop and compute helpers.
-- `src/telemetry/` — planned bounded presentation recorder and metrics.
-- `shaders/glsl/` — planned compute shaders; offline SPIR-V compilation.
-- `android/`, `examples/`, `tools/`, `scripts/` — planned platform, samples and tooling.
-- `docs/` — architecture, integration, validation and research notes.
+- include/ — public C ABI and Vulkan interop API.
+- src/core/ — lifecycle and portable engine.
+- src/vulkan/ — Vulkan helpers and compute runtime.
+- shaders/glsl/ — GLSL compute sources; offline SPIR-V compilation.
+- tests/ — contract, planner and Vulkan smoke tests.
+- docs/ — architecture, integration, validation and research notes.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md)
-- [Optical Flow Core](docs/optical-flow-core.md)
-- [Snap_AI_Engine branch analysis](docs/analysis-snap-ai-engine.md)
-- [Algorithm decisions](docs/algorithm-decisions.md)
-- [Host/Vulkan ownership contract](docs/vulkan-host-contract.md)
+- [Vulkan host contract](docs/vulkan-host-contract.md)
 - [Vulkan runtime backend](docs/vulkan-backend.md)
-- [Win-FG architecture analysis](docs/analysis-win-fg.md)
-- [Adreno + Turnip device test plan](docs/adreno-turnip-test-plan.md)
-- [bionic-vulkan-wrapper analysis](docs/analysis-bionic-vulkan-wrapper.md)
+- [Adreno + Turnip test plan](docs/adreno-turnip-test-plan.md)
 - [Integration guide](docs/integration.md)
-- [Engineer mode and telemetry](docs/engineer-mode.md)
-- [Validation and benchmark plan](docs/testing.md)
+- [Engineer Mode and telemetry](docs/engineer-mode.md)
+- [Testing and benchmark plan](docs/testing.md)
+- [Build](docs/build.md)
 - [Roadmap](ROADMAP.md)
+- [Phase 1 documentation baseline](docs/phase-1-status.md)
 
 ## Build and test
 
-```sh
+The portable baseline:
+
+~~~sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --parallel
 ctest --test-dir build --output-on-failure
-```
+~~~
 
-This currently validates only the portable lifecycle contract skeleton, not frame synthesis or Vulkan device execution. If `glslangValidator` is installed, CMake also builds the offline shader target; `spirv-val` is used when available. See [build.md](docs/build.md) and [Optical Flow Core](docs/optical-flow-core.md).
+This currently validates the portable lifecycle contract skeleton. The Vulkan runtime branch additionally requires Vulkan development headers/loader, glslangValidator, Python 3 and (for SPIR-V validation) spirv-val. See docs/build.md. A successful lavapipe test is not evidence of Adreno compatibility.
 
-## Clean-room and attribution
+## Clean-room and licensing
 
-AromaFG is an independent implementation. The analysis of [Snap888/Snap_AI_Engine](https://github.com/Snap888/Snap_AI_Engine/tree/SnapFrameBackendV1) is used to select architecture, invariants and experiments; this repository does not import its source files or claim its implementation is part of AromaFG. The analyzed upstream branch is MIT-licensed; see its [license](https://github.com/Snap888/Snap_AI_Engine/blob/SnapFrameBackendV1/LICENSE). AromaFG is licensed under [MPL-2.0](LICENSE).
+AromaFG is an independent implementation. External repositories are studied for architecture, invariants and experiments; their code, shaders, model weights and datasets are not automatically reusable. Each imported artifact requires file-level provenance and license review. Commercial or obfuscated frame-generation dumps are not used.
 
-Commercial or obfuscated frame-generation dumps are not used.
+AromaFG is licensed under MPL-2.0.
