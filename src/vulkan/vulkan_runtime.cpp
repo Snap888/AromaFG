@@ -811,11 +811,11 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_create(
     backend->struct_size = sizeof(*backend);
     backend->api_version = AROMA_FG_API_VERSION;
     backend->user_data = state;
-    backend->initialize = backend_initialize;
-    backend->reset_history = backend_reset;
-    backend->update_config = backend_update;
-    backend->process_frame = backend_process;
-    backend->shutdown = backend_shutdown;
+    backend->initialize = aromafg::vk::backend_initialize;
+    backend->reset_history = aromafg::vk::backend_reset;
+    backend->update_config = aromafg::vk::backend_update;
+    backend->process_frame = aromafg::vk::backend_process;
+    backend->shutdown = aromafg::vk::backend_shutdown;
     return AROMA_FG_OK;
 }
 
