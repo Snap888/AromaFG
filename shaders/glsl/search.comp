@@ -1,0 +1,48 @@
+#version 450
+// Dispatch A->B and B->A. Seed flow must be upscaled into this level's pixel units.
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 0, r16f) uniform readonly image2D imageA;
+layout(set = 0, binding = 1, r16f) uniform readonly image2D imageB;
+layout(set = 0, binding = 2, rg16f) uniform readonly image2D seedFlow;
+layout(set = 0, binding = 3, rg16f) uniform writeonly image2D outputFlow;
+layout(set = 0, binding = 4, r16f) uniform writeonly image2D outputConfidence;
+layout(push_constant) uniform Params {
+    uint width; uint height; int searchRadius; int searchStep;
+    uint useSeed; float seedScale;
+} pc;
+float sampleA(ivec2 p, ivec2 size) {
+    return imageLoad(imageA, clamp(p, ivec2(0), size - ivec2(1))).r;
+}
+float sampleB(ivec2 p, ivec2 size) {
+    return imageLoad(imageB, clamp(p, ivec2(0), size - ivec2(1))).r;
+}
+float patchCost(ivec2 p, ivec2 q, ivec2 size) {
+    float cost = 0.0;
+    for (int y = -1; y <= 1; ++y)
+        for (int x = -1; x <= 1; ++x)
+            cost += abs(sampleA(p + ivec2(x,y), size) - sampleB(q + ivec2(x,y), size));
+    return cost / 9.0;
+}
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(imageA);
+    if (p.x >= int(pc.width) || p.y >= int(pc.height)) return;
+    ivec2 seed = ivec2(0);
+    if (pc.useSeed != 0u) seed = ivec2(round(imageLoad(seedFlow,p).xy * pc.seedScale));
+    float best = 1.0e20, second = 1.0e20;
+    ivec2 bestVector = seed;
+    int radius = max(pc.searchRadius, 0), stepSize = max(pc.searchStep, 1);
+    for (int oy=-radius; oy<=radius; oy+=stepSize) {
+        for (int ox=-radius; ox<=radius; ox+=stepSize) {
+            ivec2 candidate = seed + ivec2(ox,oy);
+            float cost = patchCost(p, p + candidate, size);
+            if (cost < best) { second=best; best=cost; bestVector=candidate; }
+            else if (cost < second) second=cost;
+        }
+    }
+    float separation = clamp((second-best)/max(second,1.0e-4),0.0,1.0);
+    float boundaryPenalty = (abs(bestVector.x-seed.x)>=radius ||
+                             abs(bestVector.y-seed.y)>=radius) ? 0.65 : 1.0;
+    imageStore(outputFlow,p,vec4(vec2(bestVector),0.0,0.0));
+    imageStore(outputConfidence,p,vec4(separation*boundaryPenalty,0.0,0.0,1.0));
+}
