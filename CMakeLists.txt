@@ -101,7 +101,21 @@ if(AROMA_FG_BUILD_TESTS)
   target_link_libraries(aroma_fg_contract_tests PRIVATE AromaFG::AromaFG)
   target_compile_options(aroma_fg_contract_tests PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UNDEBUG>")
   add_test(NAME aroma_fg_contract_tests COMMAND aroma_fg_contract_tests)
+
+  # Compile this client against the frozen pre-transaction V1 header in a
+  # separate C translation unit to exercise the real binary ABI boundary.
+  add_executable(aroma_fg_legacy_abi_client tests/legacy_abi/legacy_abi_client.c)
+  target_include_directories(aroma_fg_legacy_abi_client PRIVATE tests/legacy_abi)
+  target_link_libraries(aroma_fg_legacy_abi_client PRIVATE AromaFG::AromaFG)
+  set_target_properties(aroma_fg_legacy_abi_client PROPERTIES LINKER_LANGUAGE CXX)
+  add_test(NAME aroma_fg_legacy_abi_client COMMAND aroma_fg_legacy_abi_client)
+
   if(AROMA_FG_ENABLE_VULKAN)
+    add_executable(aroma_fg_vulkan_host_transaction tests/vulkan_host_transaction.cpp)
+    target_link_libraries(aroma_fg_vulkan_host_transaction PRIVATE AromaFG::AromaFG Vulkan::Vulkan)
+    target_compile_features(aroma_fg_vulkan_host_transaction PRIVATE cxx_std_20)
+    target_compile_options(aroma_fg_vulkan_host_transaction PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UNDEBUG>")
+    add_test(NAME aroma_fg_vulkan_host_transaction COMMAND aroma_fg_vulkan_host_transaction)
     add_executable(aroma_fg_vulkan_plan_tests tests/test_vulkan_plan.cpp)
     target_include_directories(aroma_fg_vulkan_plan_tests PRIVATE src)
     target_compile_options(aroma_fg_vulkan_plan_tests PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UNDEBUG>")
