@@ -7,7 +7,7 @@ The runtime adapter is a real Vulkan compute implementation, not just a pass pla
 - Owns private optimal-tiled VkImages, VkDeviceMemory and VkImageViews for both luma pyramids, forward/backward flow, confidence, seed flow, zero seed and refined full-resolution flow.
 - Checks device queue capabilities, workgroup limits and required R16/RG16 storage formats before pipeline creation.
 - Builds shader modules, descriptor-set layouts, pipeline layouts and compute pipelines from SPIR-V embedded at build time.
-- Uses an owned VkPipelineCache. Cache blobs can be supplied at backend creation and exported later; the host is responsible for associating a blob with the exact device/driver and shader ABI.
+- Uses an owned VkPipelineCache. Cache blobs can be supplied at backend creation and exported later; if a supplied blob is rejected by the driver, initialization retries with an empty cache. The host is responsible for associating a blob with the exact device/driver and shader ABI.
 - Allocates a descriptor pool and timestamp query pool per in-flight slot. The host must wait for that slot's submission fence before AromaFG reuses it.
 - Writes descriptors per invocation and records luma, downsample, coarse-to-fine upsample/search in both directions, forward/backward consistency refinement and one synthesis dispatch per requested phase.
 - Inserts explicit image barriers between producer and consumer passes. External input/output transitions include host-provided old access/stage and restore access/stage/layout.
