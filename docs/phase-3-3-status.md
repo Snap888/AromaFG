@@ -22,7 +22,12 @@ Run with an authorized USB-debugging device connected:
 
 ~~~sh
 tools/run_android_device_smoke.sh build-android
+# Optional: select an exact ADB serial (also accepted via ADB_SERIAL)
+tools/run_android_device_smoke.sh build-android aromafg-device-report.txt SERIAL
 ~~~
+
+
+The runner requires exactly one authorized ADB device unless an explicit serial is supplied (argument 3 or `ADB_SERIAL`). It rejects targets without arm64-v8a support and Android API 26 or newer before deployment. All device-side commands are scoped to the selected serial.
 
 The CI artifact contains `aromafg-build-commit.txt` beside the binaries. The runner reads that file and records it as the binary provenance. If running a locally built binary, set `AROMAFG_BUILD_COMMIT` to its exact 40-character source commit. If neither is supplied, the report explicitly records unknown; it never substitutes the current checkout SHA.
 
