@@ -198,7 +198,7 @@ int main() {
  frame.previous_restore_layout=VK_IMAGE_LAYOUT_GENERAL;frame.current_restore_layout=VK_IMAGE_LAYOUT_GENERAL;
  frame.previous_restore_stage=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;frame.current_restore_stage=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
  frame.previous_restore_access=VK_ACCESS_SHADER_READ_BIT;frame.current_restore_access=VK_ACCESS_SHADER_READ_BIT;
- frame.output_images=outputs;frame.output_views=output_views;frame.output_layouts=output_layouts;
+ frame.output_images=output_images;frame.output_views=output_views;frame.output_layouts=output_layouts;
  frame.output_restore_layouts=output_restore;frame.output_capacity=3;frame.output_format=fmt;
  frame.output_stage=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;frame.output_access=VK_ACCESS_SHADER_WRITE_BIT;
  frame.output_restore_stage=VK_PIPELINE_STAGE_TRANSFER_BIT;frame.output_restore_access=VK_ACCESS_TRANSFER_READ_BIT;
@@ -208,7 +208,7 @@ int main() {
  input.host_frame=reinterpret_cast<uintptr_t>(&frame);
  AromaFGFrameOutput output{};output.struct_size=sizeof(output);
  const AromaFGStatus status=aroma_fg_process(engine,&input,&output);
- if(status!=AROMA_FG_OK||output.generated_frames!=1){std::printf("PROCESS_FAIL status=%d generated=%u\n",status,output.generated_frames);return 21;}
+ if(status!=AROMA_FG_OK||output.generated_frames!=3){std::printf("PROCESS_FAIL status=%d generated=%u\n",status,output.generated_frames);return 21;}
  VkBufferImageCopy copy{};copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
  copy.imageExtent={W,H,1};
  for(uint32_t i=0;i<3;++i){copy.bufferOffset=VkDeviceSize(i)*W*H*4;
@@ -227,15 +227,18 @@ int main() {
  if(wait!=VK_SUCCESS)return 25;
  AromaFGVulkanTimingV1 timing{};timing.struct_size=sizeof(timing);timing.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;
  const AromaFGStatus timing_status=aroma_fg_vulkan_backend_collect_timing(&backend,0,&timing);
- void* mapped=nullptr;if(vkMapMemory(dev,readback_mem,0,W*H*4,0,&mapped)!=VK_SUCCESS)return 26;
+ void* mapped=nullptr;if(vkMapMemory(dev,readback_mem,0,W*H*4*3,0,&mapped)!=VK_SUCCESS)return 26;
  const auto* px=static_cast<const unsigned char*>(mapped);
- const unsigned pixel_r=px[0],pixel_g=px[1],pixel_b=px[2];
- const int expected=102;
- const bool pixel_ok=std::abs(int(pixel_r)-expected)<24&&std::abs(int(pixel_g)-expected)<24&&std::abs(int(pixel_b)-expected)<24;
+ const unsigned r0=px[0],g0=px[1],b0=px[2];
+ const unsigned r1=px[W*H*4],g1=px[W*H*4+1],b1=px[W*H*4+2];
+ const unsigned r2=px[2*W*H*4],g2=px[2*W*H*4+1],b2=px[2*W*H*4+2];
+ const bool pixel_ok=std::abs(int(r0)-64)<24&&std::abs(int(g0)-77)<24&&std::abs(int(b0)-89)<24&&
+  std::abs(int(r1)-102)<24&&std::abs(int(g1)-102)<24&&std::abs(int(b1)-102)<24&&
+  std::abs(int(r2)-140)<24&&std::abs(int(g2)-128)<24&&std::abs(int(b2)-115)<24;
  vkUnmapMemory(dev,readback_mem);
- std::printf("FG status=%s generated=%u timing_status=%d preprocess_ms=%.3f flow_ms=%.3f synth_ms=%.3f pixel=%u,%u,%u\n",
+ std::printf("FG status=%s generated=%u timing_status=%d preprocess_ms=%.3f flow_ms=%.3f synth_ms=%.3f phases=[%u,%u,%u][%u,%u,%u][%u,%u,%u]\n",
   pixel_ok?"PASS":"FAIL",output.generated_frames,timing_status,timing.preprocess_gpu_ms,timing.flow_gpu_ms,timing.synthesis_gpu_ms,
-  pixel_r,pixel_g,pixel_b);
+  r0,g0,b0,r1,g1,b1,r2,g2,b2);
  aroma_fg_destroy(engine);
  vkDestroyFence(dev,fence,nullptr);
  vkDestroyBuffer(dev,readback,nullptr);vkFreeMemory(dev,readback_mem,nullptr);
