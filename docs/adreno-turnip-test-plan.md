@@ -16,6 +16,7 @@ Record at minimum:
 Before creating compute pipelines, query and record:
 - Compute queue availability for the host-provided queue family.
 - Storage-image support for R16_SFLOAT, R16G16_SFLOAT and R16G16B16A16_SFLOAT.
+- Confirm shaderStorageImageExtendedFormats was enabled at vkCreateDevice; report the enabled VkPhysicalDeviceFeatures, not only supported features.
 - Required image tiling/usage support for every private intermediate image.
 - Format compatibility of the host source and output images.
 - maxComputeWorkGroupInvocations, maxComputeWorkGroupSize and maxComputeWorkGroupCount.
