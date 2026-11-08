@@ -42,7 +42,9 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] Reset temporal history on scene cuts and frame-ID gaps.
 - [x] Document callback payload vs GPU object lifetime, queue order and cancellation preconditions.
 - [x] CI build, transaction contract tests and full Vulkan graph on Mesa lavapipe with synchronization validation (run #42521641315).
-- [ ] Add command-buffer-abandonment and slot-reuse integration tests.
+- [x] Add a separately compiled C client using the frozen pre-transaction V1 ABI header; CTest passes on lavapipe (run #42522045599).
+- [x] Add a real Vulkan host transaction test covering abandon/reset/cancel/retry/submit/commit/fence and command-pool reuse (run #42522045599; test backend double).
+- [x] Extend the full Vulkan FG runtime smoke test to use slot 1 and then reuse slot 0 only after each submission fence (Phase 3.2 CI pending).
 - [ ] Review/approve Phase 3 PR; test on a real Vulkan host and target Adreno/Turnip devices.
 - [ ] Define robust device-loss recovery and a complete output format conversion/fallback policy.
 
