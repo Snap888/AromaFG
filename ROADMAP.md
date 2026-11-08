@@ -44,8 +44,10 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] CI build, transaction contract tests and full Vulkan graph on Mesa lavapipe with synchronization validation (run #42521641315).
 - [x] Add a separately compiled C client using the frozen pre-transaction V1 ABI header; CTest passes on lavapipe (run #42522045599).
 - [x] Add a real Vulkan host transaction test covering abandon/reset/cancel/retry/submit/commit/fence and command-pool reuse (run #42522045599; test backend double).
-- [x] Extend the full Vulkan FG runtime smoke test to use slot 1 and then reuse slot 0 only after each submission fence (Phase 3.2 CI pending).
-- [ ] Review/approve Phase 3 PR; test on a real Vulkan host and target Adreno/Turnip devices.
+- [x] Extend the full Vulkan FG runtime smoke test to use slot 1 and then reuse slot 0 only after each submission fence (run #42523914455; Mesa lavapipe).
+- [x] Add pinned Android NDK arm64-v8a cross-build and ADB smoke runner (Phase 3.3; CI pending).
+- [ ] Run the smoke test on physical Adreno/Turnip and Qualcomm devices; attach exact device reports.
+- [ ] Review/approve Phase 3 PR; test borrowed-device integration with a real host.
 - [ ] Define robust device-loss recovery and a complete output format conversion/fallback policy.
 
 ## Phase 4 — lightweight Frame Generation MVP
@@ -62,7 +64,7 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [ ] Add memory suballocation and memory-budget-aware resource pooling.
 - [ ] Add robust capability/format checks and device-loss recovery.
 - [ ] Validate descriptor/query slot reuse and resize on real drivers.
-- [ ] Add Android NDK builds and host-side device integration tests.
+- [ ] Add in-host Android AHardwareBuffer/synchronization integration tests.
 
 ## Phase 6 — Adreno / Turnip optimization
 

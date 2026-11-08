@@ -2,7 +2,7 @@
 
 **Aroma Frame Generation** is a clean-room, Vulkan-based optical-flow frame-generation library for Android (Qualcomm Adreno + Mesa Turnip/proprietary drivers), Winlator/WinNative, DXVK-based hosts and native renderers.
 
-> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. The feature/vulkan-engine-runtime branch adds a baseline Vulkan compute graph and a lavapipe smoke test. No physical Adreno/Turnip or Qualcomm proprietary-driver validation has been completed. This is not yet a production-ready SDK.
+> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. Feature branches contain the baseline Vulkan compute graph, host transaction hardening and fence-backed slot tests. CI includes Mesa lavapipe software execution and an Android arm64-v8a NDK cross-build. No physical Adreno/Turnip or Qualcomm proprietary-driver validation has been completed. This is not yet a production-ready SDK.
 
 ## Goals
 
@@ -20,9 +20,10 @@
 |---|---|
 | Portable C ABI / lifecycle | Present on main |
 | GLSL optical-flow passes | Present on feature branches |
-| Vulkan runtime graph | Present on feature/vulkan-engine-runtime |
-| ×2 / ×3 / ×4 phase dispatch | Implemented in runtime branch; software smoke-tested |
-| CI GPU validation | Mesa lavapipe only |
+| Vulkan runtime graph | Present on feature branches |
+| ×2 / ×3 / ×4 phase dispatch | Software smoke-tested on Mesa lavapipe |
+| Linux CI GPU validation | Mesa lavapipe only |
+| Android arm64-v8a | NDK cross-build and standalone ADB smoke runner added in Phase 3.3; hardware run pending |
 | Physical Adreno / Turnip | Not tested |
 | Qualcomm proprietary driver | Not tested |
 | Android SDK / Winlator adapters / Vulkan Layer | Not implemented |
@@ -35,7 +36,7 @@ The Vulkan runtime branch currently supports RGBA8_UNORM and RGBA16_SFLOAT outpu
 
 1. Estimate motion once per consecutive source-frame pair; reuse it for each generated phase.
 2. Keep capture, command submission, synchronization, swapchain acquisition and presentation owned by the host.
-3. A successful Vulkan `aroma_fg_process()` means commands were recorded, not submitted. The host must call `aroma_fg_commit_frame()` after successful queue submission, or abandon/reset the command buffer and call `aroma_fg_cancel_frame()`.
+3. A successful Vulkan aroma_fg_process() means commands were recorded, not submitted. The host must call aroma_fg_commit_frame() after successful queue submission, or abandon/reset the command buffer and call aroma_fg_cancel_frame().
 4. Frame IDs advance only on transaction commit; cancelled recordings may be retried with the same ID.
 5. Borrowed Vulkan handles must remain alive until recorded commands complete; callback payload lifetime and GPU resource lifetime are distinct.
 6. Bypass safely on invalid input, unsupported format/capability, scene discontinuity or backend failure.
@@ -56,6 +57,7 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - src/vulkan/ — Vulkan helpers and compute runtime.
 - shaders/glsl/ — GLSL compute sources; offline SPIR-V compilation.
 - tests/ — contract, planner and Vulkan smoke tests.
+- tools/ — shader utilities and Android device smoke runner.
 - docs/ — architecture, integration, validation and research notes.
 
 ## Documentation
@@ -73,6 +75,7 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - [Phase 2 technology research](docs/phase-2-research.md)
 - [Phase 3 lifecycle hardening status](docs/phase-3-status.md)
 - [Phase 3.2 ABI and fence-backed runtime slot validation](docs/phase-3-2-status.md)
+- [Phase 3.3 Android arm64 build and device validation](docs/phase-3-3-status.md)
 - [Vulkan host transaction contract](docs/vulkan-host-contract.md)
 
 ## Build and test

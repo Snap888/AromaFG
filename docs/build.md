@@ -2,7 +2,7 @@
 
 ## Build modes and maturity
 
-The repository has a portable C ABI/lifecycle target on main. The experimental Vulkan runtime is on feature/vulkan-engine-runtime and its dependent feature branches. Build success is not evidence of physical-device support or production image quality.
+The repository has a portable C ABI/lifecycle target on main. The experimental Vulkan runtime is on feature branches. Build success is not evidence of physical-device support or production image quality.
 
 ## Portable build
 
@@ -46,11 +46,37 @@ cmake -S . -B build-smoke -DCMAKE_BUILD_TYPE=Release \
 cmake --build build-smoke --parallel
 ~~~
 
-Run aroma_fg_device_smoke only in an environment with a suitable Vulkan ICD and validation layers. CI forces Mesa lavapipe. The smoke executable creates its own device; it is not a Winlator in-host test.
+Run aroma_fg_device_smoke only in an environment with a suitable Vulkan ICD. CI forces Mesa lavapipe. The smoke executable creates its own device; it is not a Winlator in-host test. Validation layers are enabled only when exposed by the runtime.
 
-## Android NDK
+## Android arm64-v8a cross-build
 
-An Android cross-build is a compilation check, not a runtime validation. Pin NDK, CMake, Vulkan-Headers and shader compiler versions in CI. The host supplies the Vulkan loader/ICD; AromaFG must not bundle or load a driver. Use the exact NDK toolchain and ANDROID_ABI=arm64-v8a supported by the selected environment. Physical Turnip and Qualcomm tests are separate release gates.
+The CI job pins Android NDK r27d (27.2.12479018), targets Android API 26 and compiles the shared library, contract tests and standalone Vulkan device smoke executable:
+
+~~~sh
+export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+cmake -S . -B build-android -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a \
+  -DANDROID_PLATFORM=android-26 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DAROMA_FG_ENABLE_VULKAN=ON \
+  -DAROMA_FG_COMPILE_SHADERS=ON \
+  -DAROMA_FG_BUILD_TESTS=ON \
+  -DAROMA_FG_BUILD_DEVICE_TESTS=ON
+cmake --build build-android --parallel
+~~~
+
+A cross-build is a compilation check only; it does not execute tests on an Android device. The Android platform supplies the Vulkan loader/ICD. AromaFG must not bundle, replace or load a Vulkan driver.
+
+## Run the standalone smoke on a connected Android device
+
+With USB debugging enabled and the device authorized by adb:
+
+~~~sh
+tools/run_android_device_smoke.sh build-android
+~~~
+
+The script records Android build/SoC properties and kernel metadata, pushes libaroma_fg.so plus aroma_fg_device_smoke, runs the standalone Vulkan graph against the device's system Vulkan implementation and writes aromafg-device-report.txt. The executable creates its own Vulkan instance/device/queue; this is not an integration test against a running game, Winlator or an existing host VkDevice. Preserve the report with the exact AromaFG commit and driver configuration.
 
 ## Shader toolchain
 
