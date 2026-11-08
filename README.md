@@ -77,6 +77,7 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - [Phase 3.2 ABI and fence-backed runtime slot validation](docs/phase-3-2-status.md)
 - [Phase 3.3 Android arm64 build and device validation](docs/phase-3-3-status.md)
 - [Vulkan host transaction contract](docs/vulkan-host-contract.md)
+- [Repository audit (2026-11-09)](docs/audit-2026-11-09.md)
 
 ## Build and test
 
