@@ -21,8 +21,40 @@ add_library(aroma_fg ${AROMA_FG_LIBRARY_TYPE}
 )
 
 if(AROMA_FG_ENABLE_VULKAN)
-  target_sources(aroma_fg PRIVATE src/vulkan/vulkan_backend.cpp)
+  if(NOT AROMA_FG_COMPILE_SHADERS)
+    message(FATAL_ERROR "AROMA_FG_ENABLE_VULKAN requires AROMA_FG_COMPILE_SHADERS=ON")
+  endif()
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  find_program(AROMA_FG_GLSLANG_VALIDATOR glslangValidator REQUIRED)
+  target_sources(aroma_fg PRIVATE
+    src/vulkan/vulkan_backend.cpp
+    src/vulkan/vulkan_runtime.cpp)
   target_link_libraries(aroma_fg PUBLIC Vulkan::Vulkan)
+  target_include_directories(aroma_fg PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+  file(GLOB AROMA_FG_RUNTIME_SHADERS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/glsl/*.comp")
+  set(AROMA_FG_RUNTIME_SPV)
+  set(AROMA_FG_EMBED_ARGS)
+  foreach(SHADER IN LISTS AROMA_FG_RUNTIME_SHADERS)
+    get_filename_component(SHADER_NAME "${SHADER}" NAME_WE)
+    set(SPV "${CMAKE_CURRENT_BINARY_DIR}/generated/spv/${SHADER_NAME}.spv")
+    add_custom_command(OUTPUT "${SPV}"
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated/spv"
+      COMMAND "${AROMA_FG_GLSLANG_VALIDATOR}" -V --target-env vulkan1.1 -S comp "${SHADER}" -o "${SPV}"
+      DEPENDS "${SHADER}"
+      VERBATIM)
+    list(APPEND AROMA_FG_RUNTIME_SPV "${SPV}")
+    list(APPEND AROMA_FG_EMBED_ARGS "${SHADER_NAME}_comp=${SPV}")
+  endforeach()
+  set(AROMA_FG_EMBEDDED_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/embedded_shaders.hpp")
+  add_custom_command(OUTPUT "${AROMA_FG_EMBEDDED_HEADER}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/generated"
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_spv.py"
+            "${AROMA_FG_EMBEDDED_HEADER}" ${AROMA_FG_EMBED_ARGS}
+    DEPENDS ${AROMA_FG_RUNTIME_SPV} "${CMAKE_CURRENT_SOURCE_DIR}/tools/embed_spv.py"
+    VERBATIM)
+  add_custom_target(aroma_fg_shaders DEPENDS "${AROMA_FG_EMBEDDED_HEADER}")
+  add_dependencies(aroma_fg aroma_fg_shaders)
 endif()
 add_library(AromaFG::AromaFG ALIAS aroma_fg)
 target_include_directories(aroma_fg PUBLIC
@@ -58,39 +90,7 @@ if(AROMA_FG_BUILD_TESTS)
   endif()
 endif()
 
-if(AROMA_FG_COMPILE_SHADERS)
-  find_program(AROMA_FG_GLSLANG_VALIDATOR glslangValidator)
-  find_program(AROMA_FG_SPIRV_VAL spirv-val)
-  if(AROMA_FG_GLSLANG_VALIDATOR)
-    file(GLOB AROMA_FG_GLSL_SHADERS CONFIGURE_DEPENDS
-      "${CMAKE_CURRENT_SOURCE_DIR}/shaders/glsl/*.comp")
-    set(AROMA_FG_SPIRV_OUTPUTS)
-    foreach(SHADER IN LISTS AROMA_FG_GLSL_SHADERS)
-      get_filename_component(SHADER_NAME "${SHADER}" NAME)
-      set(SPIRV_FILE "${CMAKE_CURRENT_BINARY_DIR}/shaders/${SHADER_NAME}.spv")
-      add_custom_command(OUTPUT "${SPIRV_FILE}"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/shaders"
-        COMMAND "${AROMA_FG_GLSLANG_VALIDATOR}" -V --target-env vulkan1.1 -S comp
-                "${SHADER}" -o "${SPIRV_FILE}"
-        COMMAND ${CMAKE_COMMAND} -E echo "Compiled ${SHADER_NAME}"
-        DEPENDS "${SHADER}"
-        VERBATIM)
-      if(AROMA_FG_SPIRV_VAL)
-        add_custom_command(OUTPUT "${SPIRV_FILE}.validated"
-          COMMAND "${AROMA_FG_SPIRV_VAL}" --target-env vulkan1.1 "${SPIRV_FILE}"
-          COMMAND ${CMAKE_COMMAND} -E touch "${SPIRV_FILE}.validated"
-          DEPENDS "${SPIRV_FILE}"
-          VERBATIM)
-        list(APPEND AROMA_FG_SPIRV_OUTPUTS "${SPIRV_FILE}.validated")
-      else()
-        list(APPEND AROMA_FG_SPIRV_OUTPUTS "${SPIRV_FILE}")
-      endif()
-    endforeach()
-    add_custom_target(aroma_fg_shaders ALL DEPENDS ${AROMA_FG_SPIRV_OUTPUTS})
-  else()
-    message(STATUS "glslangValidator not found; shader compilation target is disabled")
-  endif()
-endif()
+# Runtime shaders are compiled and embedded above when Vulkan support is enabled.
 
 include(GNUInstallDirs)
 install(TARGETS aroma_fg EXPORT AromaFGTargets
