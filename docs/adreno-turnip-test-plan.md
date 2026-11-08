@@ -60,7 +60,7 @@ cmake -S . -B build-android \
 cmake --build build-android --target aroma_fg_device_smoke
 ~~~
 
-For a standalone shell environment, push both libaroma_fg.so and aroma_fg_device_smoke to the device and run with LD_LIBRARY_PATH set to that directory. If the target host selects Turnip, run the test in that same Turnip environment; repeat on the stock Qualcomm proprietary driver. Do not load or replace an ICD from inside AromaFG.
+For a standalone shell environment, push both libaroma_fg.so and aroma_fg_device_smoke to the device and run with LD_LIBRARY_PATH set to that directory. If the target host selects Turnip, run the test in that same Turnip environment; repeat on the stock Qualcomm proprietary driver. Do not load or replace an ICD from inside AromaFG. If Turnip is available only through a Winlator/host driver selector rather than as the system Vulkan driver, run this smoke workload through that host's Vulkan context; launching the standalone binary outside that environment would test the system driver instead.
 
 ~~~sh
 adb push build-android/libaroma_fg.so /data/local/tmp/
