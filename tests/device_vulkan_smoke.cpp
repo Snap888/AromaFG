@@ -143,18 +143,19 @@ int main() {
  VkDevice dev=VK_NULL_HANDLE;if(vkCreateDevice(phys,&dci,nullptr,&dev)!=VK_SUCCESS){vkDestroyInstance(instance,nullptr);return 13;}
  VkQueue queue=VK_NULL_HANDLE;vkGetDeviceQueue(dev,family,0,&queue);
  constexpr uint32_t W=320,H=180;
- TestImage prev{},curr{},out{};
+ TestImage prev{},curr{};TestImage out_images_test[3]{};
  const VkFormat fmt=VK_FORMAT_R8G8B8A8_UNORM;
  if(!make_image(phys,dev,W,H,fmt,VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,prev)||
-    !make_image(phys,dev,W,H,fmt,VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,curr)||
-    !make_image(phys,dev,W,H,fmt,VK_IMAGE_USAGE_STORAGE_BIT|VK_IMAGE_USAGE_TRANSFER_SRC_BIT,out))return 14;
+    !make_image(phys,dev,W,H,fmt,VK_IMAGE_USAGE_SAMPLED_BIT|VK_IMAGE_USAGE_TRANSFER_DST_BIT,curr))return 14;
+ for(auto& image:out_images_test)
+  if(!make_image(phys,dev,W,H,fmt,VK_IMAGE_USAGE_STORAGE_BIT|VK_IMAGE_USAGE_TRANSFER_SRC_BIT,image))return 14;
  VkCommandPoolCreateInfo pci{VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};pci.queueFamilyIndex=family;
  VkCommandPool pool=VK_NULL_HANDLE;if(vkCreateCommandPool(dev,&pci,nullptr,&pool)!=VK_SUCCESS)return 15;
  VkCommandBufferAllocateInfo cai{VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};cai.commandPool=pool;
  cai.level=VK_COMMAND_BUFFER_LEVEL_PRIMARY;cai.commandBufferCount=1;
  VkCommandBuffer cmd=VK_NULL_HANDLE;if(vkAllocateCommandBuffers(dev,&cai,&cmd)!=VK_SUCCESS)return 16;
  VkBuffer readback=VK_NULL_HANDLE;VkDeviceMemory readback_mem=VK_NULL_HANDLE;
- if(!make_readback(phys,dev,W*H*4,readback,readback_mem))return 17;
+ if(!make_readback(phys,dev,W*H*4*3,readback,readback_mem))return 17;
  VkCommandBufferBeginInfo begin{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
  if(vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS)return 18;
  image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
@@ -169,8 +170,9 @@ int main() {
   VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
  image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
   VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
- image_barrier(cmd,out.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,0,
-  VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ for(auto& image:out_images_test)
+  image_barrier(cmd,image.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,0,
+   VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
  AromaFGVulkanContextV2 context{};context.struct_size=sizeof(context);
  context.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;context.instance=instance;
@@ -179,12 +181,13 @@ int main() {
  AromaFGVulkanBackendCreateInfoV1 create{};create.struct_size=sizeof(create);
  create.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;create.context=context;create.in_flight_slots=2;
  AromaFGBackendV1 backend{};if(aroma_fg_vulkan_backend_create(&create,&backend)!=AROMA_FG_OK)return 19;
- AromaFGConfig config{};aroma_fg_default_config(&config);config.enabled=1;config.multiplier=2;
+ AromaFGConfig config{};aroma_fg_default_config(&config);config.enabled=1;config.multiplier=4;
  AromaFGEngine* engine=aroma_fg_create(&config,&backend);if(!engine)return 20;
 
- VkImage outputs[1]{out.image};VkImageView output_views[1]{out.view};
- VkImageLayout output_layouts[1]{VK_IMAGE_LAYOUT_GENERAL};
- VkImageLayout output_restore[1]{VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL};
+ VkImage output_images[3]{};VkImageView output_views[3]{};
+ VkImageLayout output_layouts[3]{VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_GENERAL};
+ VkImageLayout output_restore[3]{VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL};
+ for(uint32_t i=0;i<3;++i){output_images[i]=out_images_test[i].image;output_views[i]=out_images_test[i].view;}
  AromaFGVulkanFrameV2 frame{};frame.struct_size=sizeof(frame);
  frame.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;frame.command_buffer=cmd;
  frame.previous_image=prev.image;frame.current_image=curr.image;
@@ -196,7 +199,7 @@ int main() {
  frame.previous_restore_stage=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;frame.current_restore_stage=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
  frame.previous_restore_access=VK_ACCESS_SHADER_READ_BIT;frame.current_restore_access=VK_ACCESS_SHADER_READ_BIT;
  frame.output_images=outputs;frame.output_views=output_views;frame.output_layouts=output_layouts;
- frame.output_restore_layouts=output_restore;frame.output_capacity=1;frame.output_format=fmt;
+ frame.output_restore_layouts=output_restore;frame.output_capacity=3;frame.output_format=fmt;
  frame.output_stage=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;frame.output_access=VK_ACCESS_SHADER_WRITE_BIT;
  frame.output_restore_stage=VK_PIPELINE_STAGE_TRANSFER_BIT;frame.output_restore_access=VK_ACCESS_TRANSFER_READ_BIT;
  frame.extent={W,H};frame.frame_slot=0;frame.flags=AROMA_FG_VULKAN_FRAME_HOST_QUIESCENT;
@@ -208,7 +211,8 @@ int main() {
  if(status!=AROMA_FG_OK||output.generated_frames!=1){std::printf("PROCESS_FAIL status=%d generated=%u\n",status,output.generated_frames);return 21;}
  VkBufferImageCopy copy{};copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
  copy.imageExtent={W,H,1};
- vkCmdCopyImageToBuffer(cmd,out.image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,readback,1,&copy);
+ for(uint32_t i=0;i<3;++i){copy.bufferOffset=VkDeviceSize(i)*W*H*4;
+  vkCmdCopyImageToBuffer(cmd,out_images_test[i].image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,readback,1,&copy);}
  VkBufferMemoryBarrier host_read{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
  host_read.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host_read.dstAccessMask=VK_ACCESS_HOST_READ_BIT;
  host_read.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;host_read.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
@@ -235,7 +239,7 @@ int main() {
  aroma_fg_destroy(engine);
  vkDestroyFence(dev,fence,nullptr);
  vkDestroyBuffer(dev,readback,nullptr);vkFreeMemory(dev,readback_mem,nullptr);
- destroy_image(dev,prev);destroy_image(dev,curr);destroy_image(dev,out);
+ destroy_image(dev,prev);destroy_image(dev,curr);for(auto& image:out_images_test)destroy_image(dev,image);
  vkDestroyCommandPool(dev,pool,nullptr);vkDestroyDevice(dev,nullptr);
  if(messenger) {
   auto destroy_debug=reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance,"vkDestroyDebugUtilsMessengerEXT"));
