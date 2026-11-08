@@ -59,7 +59,7 @@ META_EXPIRED="$(printf '%s' "$ARTIFACT_META" | jq -r '.expired // true')"
 
 printf '\nDownloading artifact %s from workflow run %s...\n' "$ARTIFACT_ID" "$RUN_ID"
 ZIP="$WORK_DIR/aromafg-android-arm64.zip"
-gh api -H "Accept: application/vnd.github+json" "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > "$ZIP"
+gh api --output "$ZIP" -H "Accept: application/vnd.github+json" "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip"
 ACTUAL_SHA256="$(sha256sum "$ZIP" | awk '{print $1}')"
 [[ "$ACTUAL_SHA256" == "$EXPECTED_SHA256" ]] || fail "Artifact SHA-256 mismatch: expected $EXPECTED_SHA256, got $ACTUAL_SHA256."
 unzip -tq "$ZIP" >/dev/null || fail "Artifact ZIP integrity test failed."
