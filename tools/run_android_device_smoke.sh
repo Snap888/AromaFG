@@ -13,11 +13,29 @@ if [[ ! -f "$BUILD_DIR/libaroma_fg.so" || ! -x "$BUILD_DIR/aroma_fg_device_smoke
   echo "Expected $BUILD_DIR/libaroma_fg.so and executable aroma_fg_device_smoke." >&2
   exit 2
 fi
+
+# Prefer provenance generated alongside the exact binaries. Never substitute
+# the current checkout SHA: the user may be running a downloaded CI artifact.
+BUILD_COMMIT="unknown"
+BUILD_COMMIT_SOURCE="not embedded"
+if [[ -s "$BUILD_DIR/aromafg-build-commit.txt" ]]; then
+  BUILD_COMMIT="$(tr -d '\r\n' < "$BUILD_DIR/aromafg-build-commit.txt")"
+  BUILD_COMMIT_SOURCE="build artifact metadata"
+elif [[ -n "${AROMAFG_BUILD_COMMIT:-}" ]]; then
+  BUILD_COMMIT="$AROMAFG_BUILD_COMMIT"
+  BUILD_COMMIT_SOURCE="AROMAFG_BUILD_COMMIT environment variable"
+fi
+if [[ ! "$BUILD_COMMIT" =~ ^[0-9a-fA-F]{40}$ && "$BUILD_COMMIT" != "unknown" ]]; then
+  echo "Invalid AromaFG build commit '$BUILD_COMMIT' (expected 40-character SHA)." >&2
+  exit 2
+fi
+
 adb get-state >/dev/null
 
 {
   echo "AromaFG Android Vulkan device report"
-  echo "AromaFG commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
+  echo "AromaFG binary commit: $BUILD_COMMIT"
+  echo "Commit provenance: $BUILD_COMMIT_SOURCE"
   echo "Build directory: $BUILD_DIR"
   echo "Capture time (host UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo

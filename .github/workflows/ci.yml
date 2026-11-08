@@ -60,6 +60,8 @@ jobs:
             -DAROMA_FG_BUILD_DEVICE_TESTS=ON
       - name: Cross-compile library, contract tests and Vulkan device smoke
         run: cmake --build build-android --parallel
+      - name: Write exact build provenance
+        run: git rev-parse HEAD > build-android/aromafg-build-commit.txt
       - name: Upload Android arm64 artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -69,3 +71,4 @@ jobs:
             build-android/aroma_fg_device_smoke
             build-android/aroma_fg_contract_tests
             build-android/aroma_fg_vulkan_plan_tests
+            build-android/aromafg-build-commit.txt

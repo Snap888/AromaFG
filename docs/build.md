@@ -64,6 +64,7 @@ cmake -S . -B build-android -G Ninja \
   -DAROMA_FG_BUILD_TESTS=ON \
   -DAROMA_FG_BUILD_DEVICE_TESTS=ON
 cmake --build build-android --parallel
+git rev-parse HEAD > build-android/aromafg-build-commit.txt
 ~~~
 
 A cross-build is a compilation check only; it does not execute tests on an Android device. The Android platform supplies the Vulkan loader/ICD. AromaFG must not bundle, replace or load a Vulkan driver.
@@ -76,7 +77,7 @@ With USB debugging enabled and the device authorized by adb:
 tools/run_android_device_smoke.sh build-android
 ~~~
 
-The script records Android build/SoC properties and kernel metadata, pushes libaroma_fg.so plus aroma_fg_device_smoke, runs the standalone Vulkan graph against the device's system Vulkan implementation and writes aromafg-device-report.txt. The executable creates its own Vulkan instance/device/queue; this is not an integration test against a running game, Winlator or an existing host VkDevice. Preserve the report with the exact AromaFG commit and driver configuration.
+The script reads the exact build SHA from `aromafg-build-commit.txt` (or `AROMAFG_BUILD_COMMIT` for a local build), records Android build/SoC properties and kernel metadata, pushes `libaroma_fg.so` plus `aroma_fg_device_smoke`, runs the standalone Vulkan graph against the device's system Vulkan implementation and writes `aromafg-device-report.txt`. The executable creates its own Vulkan instance/device/queue; this is not an integration test against a running game, Winlator or an existing host VkDevice. Preserve the report with the exact AromaFG commit and driver configuration.
 
 ## Shader toolchain
 
