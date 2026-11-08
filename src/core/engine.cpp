@@ -17,11 +17,11 @@ constexpr size_t legacy_backend_size = offsetof(AromaFGBackendV1, commit_frame);
 bool valid_backend(const AromaFGBackendV1* b) {
     if (!b || b->struct_size < legacy_backend_size ||
         b->api_version != AROMA_FG_API_VERSION || !b->process_frame) return false;
-    const bool has_commit = b->struct_size >= offsetof(AromaFGBackendV1, cancel_frame) + sizeof(b->cancel_frame)
-        && b->commit_frame;
+    if (b->struct_size > legacy_backend_size && b->struct_size < sizeof(AromaFGBackendV1))
+        return false;
+    const bool has_commit = b->struct_size >= sizeof(AromaFGBackendV1) && b->commit_frame;
     const bool has_cancel = b->struct_size >= sizeof(AromaFGBackendV1) && b->cancel_frame;
-    const bool advertises_partial = b->struct_size >= sizeof(AromaFGBackendV1);
-    return !advertises_partial || (has_commit && has_cancel);
+    return has_commit == has_cancel;
 }
 struct BusyGuard {
     std::atomic_flag& flag;
