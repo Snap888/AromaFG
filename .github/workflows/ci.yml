@@ -1,4 +1,5 @@
 name: AromaFG CI
+# Vulkan backend validation: keep ABI and planner tests enabled in Release builds
 
 on:
   push:
