@@ -53,7 +53,7 @@ Commit releases the core's CPU transaction. It does not mean GPU completion or p
 - Device-loss recovery and full output format conversion/fallback policy remain open.
 - The callback API serializes recording transactions per engine. This is intentional for now; parallel CPU recording is not supported.
 - No physical Adreno, Turnip or Qualcomm proprietary-driver test is claimed.
-- CI and integration tests have not yet been observed for this branch at the time this document was authored. A passing local or CI contract test does not replace real host/device validation.
+- GitHub Actions run [#42521641315](https://github.com/Snap888/AromaFG/actions/runs/42521641315) passed build, contract tests, SPIR-V validation, and the full Vulkan graph on Mesa lavapipe with synchronization validation. This is software-driver evidence only; it does not replace a real host integration or Adreno/Turnip validation.
 
 ## Review checklist
 
@@ -63,7 +63,7 @@ Commit releases the core's CPU transaction. It does not mean GPU completion or p
 - [x] Require explicit commit/cancel for the Vulkan adapter.
 - [x] Make descriptor/timestamp slot state reflect transaction outcome.
 - [x] Gate source linear sampler use on format feature support.
-- [ ] CI build, contract tests, SPIR-V validation and lavapipe smoke test pass.
+- [x] CI build, contract tests, SPIR-V validation and lavapipe smoke test pass (run #42521641315).
 - [ ] Add host integration test for successful submit/commit and abandon/cancel.
 - [ ] Validate slot reuse, query collection and resize with actual fences.
 - [ ] Review ABI compatibility with a separately compiled legacy client.
