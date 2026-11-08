@@ -22,6 +22,8 @@ typedef struct AromaFGVulkanContextV1 {
  VkPhysicalDeviceProperties properties;
  VkPhysicalDeviceMemoryProperties memory_properties;
 } AromaFGVulkanContextV1;
+AROMA_FG_API int aroma_fg_vulkan_validate_context(const AromaFGVulkanContextV1* context);
+AROMA_FG_API int aroma_fg_vulkan_validate_frame(const AromaFGVulkanFrameV1* frame, uint32_t required_outputs);
 #ifdef __cplusplus
 }
 #endif
