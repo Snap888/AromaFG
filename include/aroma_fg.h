@@ -45,7 +45,7 @@ typedef struct AromaFGConfig {
     uint32_t struct_size;
     uint32_t api_version;
     uint32_t enabled;
-    uint32_t multiplier;       /* 1 = bypass; 2..4 = up to M-1 generated phases */
+    uint32_t multiplier;
     AromaFGQuality quality;
     uint32_t flow_scale_percent;
     uint32_t profiling_enabled;
@@ -60,7 +60,7 @@ typedef struct AromaFGFrameInput {
     uint32_t height;
     uint32_t format;
     uint32_t scene_cut;
-    uintptr_t host_frame;      /* Opaque token; core never dereferences it. */
+    uintptr_t host_frame; /* Opaque callback-scoped payload; never retained by core. */
 } AromaFGFrameInput;
 
 typedef struct AromaFGFrameOutput {
@@ -73,12 +73,14 @@ typedef struct AromaFGFrameOutput {
 } AromaFGFrameOutput;
 
 /*
- * Backend contract:
- * - host owns Vulkan device, queue, command buffers, swapchain and WSI sync;
- * - backend records work into host-provided resources only;
- * - backend never submits host command buffers or waits synchronously;
- * - at most multiplier-1 distinct chronological phases may be generated;
- * - borrowed handles are valid only for the callback duration.
+ * Legacy backends (struct_size ending before commit_frame) retain automatic
+ * commit-on-success behavior. Transactional backends provide BOTH commit_frame
+ * and cancel_frame. The core then permits one outstanding recording transaction:
+ * process_frame -> host submit or abandon -> commit/cancel.
+ *
+ * commit_frame is called only after the host successfully submits the command
+ * buffer. cancel_frame is called only after the host abandons/resets it.
+ * Neither callback may submit, wait for, or destroy host Vulkan objects.
  */
 typedef struct AromaFGBackendV1 {
     uint32_t struct_size;
@@ -90,17 +92,24 @@ typedef struct AromaFGBackendV1 {
     AromaFGStatus (*process_frame)(void* user_data,
         const AromaFGFrameInput* input, AromaFGFrameOutput* output);
     void (*shutdown)(void* user_data);
+    AromaFGStatus (*commit_frame)(void* user_data, uint64_t frame_id);
+    AromaFGStatus (*cancel_frame)(void* user_data, uint64_t frame_id);
 } AromaFGBackendV1;
 
 AROMA_FG_API void aroma_fg_default_config(AromaFGConfig* config);
 AROMA_FG_API AromaFGEngine* aroma_fg_create(
     const AromaFGConfig* config, const AromaFGBackendV1* backend);
+/* Destroy only after all transactions are committed/cancelled and GPU work is quiescent. */
 AROMA_FG_API void aroma_fg_destroy(AromaFGEngine* engine);
 AROMA_FG_API AromaFGStatus aroma_fg_set_config(
     AromaFGEngine* engine, const AromaFGConfig* config);
 AROMA_FG_API AromaFGStatus aroma_fg_process(
     AromaFGEngine* engine, const AromaFGFrameInput* input,
     AromaFGFrameOutput* output);
+/* Transactional backends: call commit after successful host queue submission. */
+AROMA_FG_API AromaFGStatus aroma_fg_commit_frame(AromaFGEngine* engine, uint64_t frame_id);
+/* Transactional backends: call cancel after the recording command buffer is abandoned. */
+AROMA_FG_API AromaFGStatus aroma_fg_cancel_frame(AromaFGEngine* engine, uint64_t frame_id);
 AROMA_FG_API uint32_t aroma_fg_get_api_version(void);
 
 #ifdef __cplusplus
