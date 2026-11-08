@@ -48,6 +48,8 @@ int main() {
     AromaFGConfig c{}; aroma_fg_default_config(&c);
     BackendState legacy_state{};
     auto legacy_backend=make_backend(legacy_state);
+    // Emulate a binary compiled against the original V1 struct (no appended callbacks).
+    legacy_backend.struct_size=static_cast<uint32_t>(offsetof(AromaFGBackendV1, commit_frame));
     auto* legacy=aroma_fg_create(&c,&legacy_backend);
     assert(legacy);
     auto in=frame(1); auto out=output();
@@ -68,6 +70,9 @@ int main() {
     aroma_fg_default_config(&c); c.enabled=1;
     BackendState tx_state{};
     auto tx_backend=make_backend(tx_state,true);
+    auto incomplete_backend=tx_backend;
+    incomplete_backend.cancel_frame=nullptr;
+    assert(aroma_fg_create(&c,&incomplete_backend)==nullptr);
     auto* tx=aroma_fg_create(&c,&tx_backend);
     assert(tx);
     in=frame(10); out=output();
