@@ -29,9 +29,9 @@ The smoke executable creates its own Vulkan instance/device/queue. It is not an 
 
 ## CI evidence
 
-- Linux lavapipe workflow remains the software Vulkan test.
-- Android arm64-v8a job cross-compiles the Android targets. It cannot execute them on a physical device.
-- CI status is pending at PR creation; no Android hardware result is claimed.
+- Linux lavapipe workflow passed in run #42524817141; this remains software Vulkan evidence.
+- Android arm64-v8a cross-build passed in run #42524817141, including the shared library, contract/planner test binaries and standalone Vulkan smoke executable.
+- Android artifact bundle: aromafg-android-arm64 (workflow artifact #13635241124). The cross-build cannot execute the binaries on a physical device; no Android hardware result is claimed.
 
 ## Outstanding physical validation
 
