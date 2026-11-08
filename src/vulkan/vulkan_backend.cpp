@@ -20,28 +20,6 @@ bool validate_context(const BorrowedContext& c) noexcept {
 
 }
 
-extern "C" int aroma_fg_vulkan_validate_context(const AromaFGVulkanContextV1* c) {
- if (!c || c->struct_size < sizeof(AromaFGVulkanContextV1) ||
-     c->api_version != AROMA_FG_VULKAN_INTEROP_VERSION) return 0;
- aromafg::vk::BorrowedContext borrowed{c->instance,c->physical_device,c->device,c->queue,c->queue_family_index};
- return aromafg::vk::validate_context(borrowed) ? 1 : 0;
-}
-
-extern "C" int aroma_fg_vulkan_validate_frame(const AromaFGVulkanFrameV1* f,uint32_t required_outputs) {
- if (!f || f->struct_size < sizeof(AromaFGVulkanFrameV1) ||
-     f->api_version != AROMA_FG_VULKAN_INTEROP_VERSION ||
-     f->command_buffer == VK_NULL_HANDLE || f->source_image == VK_NULL_HANDLE ||
-     f->source_view == VK_NULL_HANDLE || f->source_format == VK_FORMAT_UNDEFINED ||
-     f->source_layout == VK_IMAGE_LAYOUT_UNDEFINED || !f->extent.width || !f->extent.height ||
-     required_outputs > f->output_capacity) return 0;
- if (required_outputs && (!f->output_images || !f->output_views || !f->output_layouts ||
-                          f->output_format == VK_FORMAT_UNDEFINED)) return 0;
- for (uint32_t i=0;i<required_outputs;++i) {
-   if (f->output_images[i] == VK_NULL_HANDLE || f->output_views[i] == VK_NULL_HANDLE ||
-       f->output_layouts[i] == VK_IMAGE_LAYOUT_UNDEFINED) return 0;
- }
- return 1;
-}
 namespace aromafg::vk {
 PipelineCache::~PipelineCache(){reset();}
 PipelineCache::PipelineCache(PipelineCache&& o) noexcept:device_(std::exchange(o.device_,VK_NULL_HANDLE)),cache_(std::exchange(o.cache_,VK_NULL_HANDLE)){}
