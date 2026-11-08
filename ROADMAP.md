@@ -12,22 +12,24 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 
 ## Phase 1 — documentation baseline
 
-- [x] Align README with branch-specific maturity and evidence.
-- [x] Document architecture and separate CPU payload lifetime from Vulkan GPU-object lifetime.
+- [x] Align README with branch-specific implementation maturity and evidence.
+- [x] Document architecture and separate CPU callback payload lifetime from Vulkan GPU-object lifetime.
 - [x] Document Vulkan host ownership, synchronization and submission/cancellation gap.
 - [x] Align build instructions with actual CMake options and CI path.
 - [x] Update Adreno/Turnip validation plan and software-vs-hardware evidence boundary.
 - [x] Record known limitations and release gates.
-- [ ] Review and approve documentation PR; resolve factual comments.
+- [ ] Review and approve documentation PR #4; resolve factual comments.
 
 ## Phase 2 — research and technology selection
 
-- [ ] Re-verify candidate FG/VFI repositories, exact revisions and source provenance.
-- [ ] Build a file-level license matrix for source, shaders, model code, weights and datasets.
-- [ ] Compare classical optical flow: block matching, LK, DIS, Farneback and pyramid variants.
-- [ ] Evaluate mobile inference runtimes and model candidates without assuming realtime suitability.
-- [ ] Establish benchmark datasets, ground truth capture protocol and quality metrics.
-- [ ] Select a lightweight baseline algorithm and define measurable MVP budgets.
+- [x] Re-verify candidate FG/VFI repositories, immutable review revisions and provenance sources.
+- [x] Build an initial source/subtree license matrix; explicitly mark model checkpoints and datasets that are not cleared.
+- [x] Compare classical optical flow: block matching, LK, DIS, Farneback and pyramid variants.
+- [x] Evaluate mobile inference runtimes and model candidates without assuming realtime suitability.
+- [x] Establish benchmark dataset roles, high-FPS ground-truth protocol and quality metrics.
+- [x] Select DIS-style flow as the first A/B candidate; retain block matching as control and define proposed MVP budgets.
+- [ ] Complete exact checkpoint/dataset rights review before any such artifact is imported or redistributed.
+- [ ] Review and approve Phase 2 research PR.
 
 ## Phase 3 — API and host lifecycle hardening
 
