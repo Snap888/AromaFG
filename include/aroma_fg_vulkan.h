@@ -46,6 +46,8 @@ typedef struct AromaFGVulkanFrameV2 {
     VkFormat output_format;                 /* RGBA8_UNORM or RGBA16F */
     VkPipelineStageFlags output_stage;
     VkAccessFlags output_access;
+    VkPipelineStageFlags output_restore_stage;
+    VkAccessFlags output_restore_access;
     VkExtent2D extent;
     uint32_t frame_slot;
     uint32_t flags;
@@ -55,6 +57,8 @@ typedef struct AromaFGVulkanBackendCreateInfoV1 {
     uint32_t struct_size, api_version;
     AromaFGVulkanContextV2 context;
     uint32_t in_flight_slots; /* 2..4; default 3 */
+    const void* pipeline_cache_data;
+    size_t pipeline_cache_size;
 } AromaFGVulkanBackendCreateInfoV1;
 
 typedef struct AromaFGVulkanTimingV1 {
@@ -74,6 +78,9 @@ AROMA_FG_API AromaFGStatus aroma_fg_vulkan_backend_create(
 /* Call only after the host has waited for all submitted AromaFG command buffers. */
 AROMA_FG_API AromaFGStatus aroma_fg_vulkan_backend_collect_timing(
     AromaFGBackendV1* backend, uint32_t frame_slot, AromaFGVulkanTimingV1* timing);
+/* Two-call export: pass data=nullptr to query required size, then provide a buffer. */
+AROMA_FG_API AromaFGStatus aroma_fg_vulkan_backend_export_pipeline_cache(
+    AromaFGBackendV1* backend, void* data, size_t* inout_size);
 
 #ifdef __cplusplus
 }
