@@ -2,7 +2,7 @@
 
 **Aroma Frame Generation** is a clean-room, Vulkan-based optical-flow frame-generation library for Android (Qualcomm Adreno + Mesa Turnip/proprietary drivers), Winlator/WinNative, DXVK-based hosts and native renderers.
 
-> Status: architecture and repository bootstrap. The project is not yet a production-ready frame generator. Hardware support and image quality claims require physical-device validation.
+> Status: early bootstrap. The repository contains architecture documentation and a portable C ABI/lifecycle skeleton. It does not yet contain a production Vulkan optical-flow backend. Hardware support and image quality claims require physical-device validation.
 
 ## Goals
 
@@ -33,11 +33,11 @@ Planned quality experiments: global-motion pre-warp (C1), edge-preserving flow r
 ## Repository map
 
 - `include/` — public C ABI.
-- `src/core/` — lifecycle, chain, quality policy and pacing.
-- `src/vulkan/` — borrowed-resource interop and compute helpers.
-- `src/telemetry/` — bounded CPU presentation recorder and metrics.
-- `shaders/glsl/` — compute shaders; offline SPIR-V compilation.
-- `android/`, `examples/`, `tools/`, `scripts/` — platform, samples and tooling.
+- `src/core/` — lifecycle and portable engine skeleton.
+- `src/vulkan/` — planned Vulkan interop and compute helpers.
+- `src/telemetry/` — planned bounded presentation recorder and metrics.
+- `shaders/glsl/` — planned compute shaders; offline SPIR-V compilation.
+- `android/`, `examples/`, `tools/`, `scripts/` — planned platform, samples and tooling.
 - `docs/` — architecture, integration, validation and research notes.
 
 ## Documentation
@@ -51,12 +51,18 @@ Planned quality experiments: global-motion pre-warp (C1), edge-preserving flow r
 - [Validation and benchmark plan](docs/testing.md)
 - [Roadmap](ROADMAP.md)
 
-## Build status
+## Build and test
 
-The initial repository bootstrap is documentation-first. A buildable Vulkan backend and shader set will be added behind capability checks and validated incrementally. See [build.md](docs/build.md).
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
+
+This currently validates only the portable lifecycle contract skeleton, not frame synthesis or Vulkan device execution. See [build.md](docs/build.md).
 
 ## Clean-room and attribution
 
-AromaFG is an independent implementation. The analysis of [Snap888/Snap_AI_Engine](https://github.com/Snap888/Snap_AI_Engine/tree/SnapFrameBackendV1) is used to select architecture, invariants and experiments; this repository does not import its source files or claim its implementation is part of AromaFG. The analyzed upstream branch is MIT-licensed; see its [license](https://github.com/Snap888/Snap_AI_Engine/blob/SnapFrameBackendV1/LICENSE). AromaFG's own source licensing is defined by the repository's LICENSE file.
+AromaFG is an independent implementation. The analysis of [Snap888/Snap_AI_Engine](https://github.com/Snap888/Snap_AI_Engine/tree/SnapFrameBackendV1) is used to select architecture, invariants and experiments; this repository does not import its source files or claim its implementation is part of AromaFG. The analyzed upstream branch is MIT-licensed; see its [license](https://github.com/Snap888/Snap_AI_Engine/blob/SnapFrameBackendV1/LICENSE). AromaFG is licensed under [MPL-2.0](LICENSE).
 
 Commercial or obfuscated frame-generation dumps are not used.
