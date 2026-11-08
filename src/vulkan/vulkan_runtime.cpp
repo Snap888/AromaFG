@@ -72,7 +72,8 @@ public:
         config_ = config;
         if (!validate_context({context_.instance, context_.physical_device,
                                context_.device, context_.queue,
-                               context_.queue_family_index})) return false;
+                               context_.queue_family_index}) ||
+            context_.enabled_features.shaderStorageImageExtendedFormats != VK_TRUE) return false;
 
         vkGetPhysicalDeviceProperties(context_.physical_device, &properties_);
         vkGetPhysicalDeviceMemoryProperties(context_.physical_device, &memory_properties_);
@@ -94,8 +95,8 @@ public:
             properties_.limits.maxDescriptorSetSampledImages < 2 ||
             !format_support(VK_FORMAT_R16_SFLOAT, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
             !format_support(VK_FORMAT_R16G16_SFLOAT, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
-            !format_support(VK_FORMAT_R16_SFLOAT, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) ||
-            !format_support(VK_FORMAT_R16G16_SFLOAT, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) return false;
+            properties_.limits.maxPerStageDescriptorSamplers < 2 ||
+            properties_.limits.maxDescriptorSetSamplers < 2) return false;
 
         VkSamplerCreateInfo sampler_info{VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
         sampler_info.magFilter = VK_FILTER_LINEAR;
@@ -473,7 +474,7 @@ private:
         resources_.extent = extent;
         resources_.levels = make_pyramid(extent.width, extent.height, 8, 16);
         if (resources_.levels.size() < 2) { destroy_resources(); return false; }
-        const VkImageUsageFlags storage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        const VkImageUsageFlags storage = VK_IMAGE_USAGE_STORAGE_BIT;
         auto make_levels = [&](std::vector<Image>& images, VkFormat format, VkImageUsageFlags usage) {
             images.resize(resources_.levels.size());
             for (size_t i = 0; i < resources_.levels.size(); ++i)
