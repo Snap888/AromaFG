@@ -38,11 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
       - name: Install pinned NDK and host shader tools
         run: |
-          sdkmanager "ndk;27.2.12479018"
+          test -n "$ANDROID_HOME"
+          sdkmanager --install "ndk;27.2.12479018"
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build python3 glslang-tools spirv-tools
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
