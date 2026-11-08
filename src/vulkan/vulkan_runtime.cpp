@@ -158,6 +158,7 @@ public:
 
         Slot& slot = slots_data_[frame.frame_slot];
         read_timing(slot, output);
+        if (slot.has_timestamps) return AROMA_FG_ERROR_BUSY;
         if (!ensure_resources(frame.extent, (frame.flags & AROMA_FG_VULKAN_FRAME_HOST_QUIESCENT) != 0))
             return AROMA_FG_ERROR_BUSY;
         if (vkResetDescriptorPool(context_.device, slot.descriptors, 0) != VK_SUCCESS)
