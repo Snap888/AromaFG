@@ -153,6 +153,11 @@ int main() {
  VkBufferImageCopy copy{};copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
  copy.imageExtent={W,H,1};
  vkCmdCopyImageToBuffer(cmd,out.image,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,readback,1,&copy);
+ VkBufferMemoryBarrier host_read{VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER};
+ host_read.srcAccessMask=VK_ACCESS_TRANSFER_WRITE_BIT;host_read.dstAccessMask=VK_ACCESS_HOST_READ_BIT;
+ host_read.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;host_read.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
+ host_read.buffer=readback;host_read.offset=0;host_read.size=VK_WHOLE_SIZE;
+ vkCmdPipelineBarrier(cmd,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,0,nullptr,1,&host_read,0,nullptr);
  if(vkEndCommandBuffer(cmd)!=VK_SUCCESS)return 22;
  VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};VkFence fence=VK_NULL_HANDLE;
  if(vkCreateFence(dev,&fci,nullptr,&fence)!=VK_SUCCESS)return 23;
@@ -164,12 +169,13 @@ int main() {
  const AromaFGStatus timing_status=aroma_fg_vulkan_backend_collect_timing(&backend,0,&timing);
  void* mapped=nullptr;if(vkMapMemory(dev,readback_mem,0,W*H*4,0,&mapped)!=VK_SUCCESS)return 26;
  const auto* px=static_cast<const unsigned char*>(mapped);
+ const unsigned pixel_r=px[0],pixel_g=px[1],pixel_b=px[2];
  const int expected=102;
- const bool pixel_ok=std::abs(int(px[0])-expected)<24&&std::abs(int(px[1])-expected)<24&&std::abs(int(px[2])-expected)<24;
+ const bool pixel_ok=std::abs(int(pixel_r)-expected)<24&&std::abs(int(pixel_g)-expected)<24&&std::abs(int(pixel_b)-expected)<24;
  vkUnmapMemory(dev,readback_mem);
- std::printf("FG status=PASS generated=%u timing_status=%d preprocess_ms=%.3f flow_ms=%.3f synth_ms=%.3f pixel=%u,%u,%u\n",
-  output.generated_frames,timing_status,timing.preprocess_gpu_ms,timing.flow_gpu_ms,timing.synthesis_gpu_ms,
-  px[0],px[1],px[2]);
+ std::printf("FG status=%s generated=%u timing_status=%d preprocess_ms=%.3f flow_ms=%.3f synth_ms=%.3f pixel=%u,%u,%u\n",
+  pixel_ok?"PASS":"FAIL",output.generated_frames,timing_status,timing.preprocess_gpu_ms,timing.flow_gpu_ms,timing.synthesis_gpu_ms,
+  pixel_r,pixel_g,pixel_b);
  aroma_fg_destroy(engine);
  vkDestroyFence(dev,fence,nullptr);
  vkDestroyBuffer(dev,readback,nullptr);vkFreeMemory(dev,readback_mem,nullptr);
