@@ -17,6 +17,7 @@ typedef struct AromaFGVulkanContextV2 {
     VkDevice device;
     VkQueue queue;
     uint32_t queue_family_index;
+    VkPhysicalDeviceFeatures enabled_features; /* exact features enabled at vkCreateDevice */
 } AromaFGVulkanContextV2;
 
 /*
