@@ -6,6 +6,12 @@ This milestone adds a host-borrowed Vulkan ABI contract and reusable primitives:
 ## Ownership
 AromaFGVulkanContextV1 and AromaFGVulkanFrameV1 are borrowed structures. The host owns all handles and keeps them valid during the process callback. AromaFG owns only helper-created pipeline cache and descriptor pool objects. No helper submits queues, waits on fences, acquires/presents swapchain images, or destroys host handles. The frame payload may be passed through AromaFGFrameInput.host_frame; validate struct_size and api_version before casting. The public aroma_fg_vulkan_validate_context() and aroma_fg_vulkan_validate_frame() entrypoints perform the initial structural/capability checks. These functions do not create pipelines or execute dispatches.
 
+## Engine callback integration
+
+The existing AromaFG C engine remains backend-agnostic. The host creates a backend state object containing the borrowed context and AromaFG-owned helper objects, stores it in AromaFGBackendV1.user_data, and passes an AromaFGVulkanFrameV1 pointer through AromaFGFrameInput.host_frame for each call. The process callback validates both structures, records work into frame.command_buffer, fills only the supplied output slots, and returns. Engine does not submit the queue; the host submits after the callback. The callback must return AROMA_FG_ERROR_UNSUPPORTED or another failure status so the caller can preserve the original frame when required formats/capabilities are absent.
+
+The current milestone provides validation and scheduling primitives for this callback path. It does not yet provide a ready-made callback implementation or GPU synthesis dispatch.
+
 ## Synchronization
 GENERAL is a layout, not a memory dependency. Compute storage-image writes followed by compute reads require a compute-to-compute barrier with SHADER_WRITE to SHADER_READ access. Internal images use QUEUE_FAMILY_IGNORED; this ABI does not transfer queue-family ownership. Host adapter must define source/output transitions and restore agreed layouts.
 
