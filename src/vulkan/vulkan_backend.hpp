@@ -1,4 +1,5 @@
 #pragma once
+#include "aroma_fg.h"
 #include <vulkan/vulkan.h>
 #include <cstdint>
 #include <cstddef>
@@ -29,6 +30,6 @@ void image_barrier(VkCommandBuffer,VkImage,VkImageAspectFlags,VkAccessFlags,VkAc
 struct PyramidLevel {uint32_t width=0,height=0;};
 enum class FlowPassKind:uint8_t {Luma,Downsample,UpsampleFlow,SearchForward,SearchBackward,RefineForward,RefineBackward,Synthesize};
 struct FlowPass {FlowPassKind kind{};uint32_t level=0;float phase=0.0f;};
-std::vector<PyramidLevel> make_pyramid(uint32_t,uint32_t,uint32_t,uint32_t min_dimension=16);
-std::vector<FlowPass> make_flow_schedule(uint32_t levels,uint32_t multiplier);
+AROMA_FG_API std::vector<PyramidLevel> make_pyramid(uint32_t,uint32_t,uint32_t,uint32_t min_dimension=16);
+AROMA_FG_API std::vector<FlowPass> make_flow_schedule(uint32_t levels,uint32_t multiplier);
 }
