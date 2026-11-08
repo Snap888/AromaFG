@@ -1,0 +1,24 @@
+#version 450
+// Forward/backward cycle consistency. Run once for each direction.
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 0, rg16f) uniform readonly image2D flow;
+layout(set = 0, binding = 1, rg16f) uniform readonly image2D oppositeFlow;
+layout(set = 0, binding = 2, r16f) uniform readonly image2D inputConfidence;
+layout(set = 0, binding = 3, rg16f) uniform writeonly image2D refinedFlow;
+layout(set = 0, binding = 4, r16f) uniform writeonly image2D refinedConfidence;
+layout(push_constant) uniform Params { uint width; uint height; float consistencyScale; } pc;
+void main() {
+    ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size=imageSize(flow);
+    if(p.x>=int(pc.width)||p.y>=int(pc.height)) return;
+    vec2 f=imageLoad(flow,p).xy, target=vec2(p)+f;
+    bool inside=all(greaterThanEqual(target,vec2(0.0)))&&all(lessThan(target,vec2(size)));
+    float confidence=imageLoad(inputConfidence,p).r, consistency=0.0;
+    if(inside) {
+        ivec2 q=clamp(ivec2(round(target)),ivec2(0),size-ivec2(1));
+        vec2 back=imageLoad(oppositeFlow,q).xy;
+        consistency=exp(-max(pc.consistencyScale,0.0)*length(f+back));
+    }
+    imageStore(refinedFlow,p,vec4(f,0.0,0.0));
+    imageStore(refinedConfidence,p,vec4(clamp(confidence*(inside?consistency:0.0),0.0,1.0),0.0,0.0,1.0));
+}

@@ -1,0 +1,12 @@
+#version 450
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 0, rgba8) uniform readonly image2D sourceColor;
+layout(set = 0, binding = 1, r16f) uniform writeonly image2D destinationLuma;
+layout(push_constant) uniform Params { uint width; uint height; } pc;
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (p.x >= int(pc.width) || p.y >= int(pc.height)) return;
+    vec3 rgb = imageLoad(sourceColor, p).rgb;
+    float y = dot(rgb, vec3(0.2126, 0.7152, 0.0722));
+    imageStore(destinationLuma, p, vec4(y, 0.0, 0.0, 1.0));
+}

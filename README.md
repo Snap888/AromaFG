@@ -43,6 +43,7 @@ Planned quality experiments: global-motion pre-warp (C1), edge-preserving flow r
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Optical Flow Core](docs/optical-flow-core.md)
 - [Snap_AI_Engine branch analysis](docs/analysis-snap-ai-engine.md)
 - [Algorithm decisions](docs/algorithm-decisions.md)
 - [Host/Vulkan ownership contract](docs/vulkan-host-contract.md)
@@ -59,7 +60,7 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-This currently validates only the portable lifecycle contract skeleton, not frame synthesis or Vulkan device execution. See [build.md](docs/build.md).
+This currently validates only the portable lifecycle contract skeleton, not frame synthesis or Vulkan device execution. If `glslangValidator` is installed, CMake also builds the offline shader target; `spirv-val` is used when available. See [build.md](docs/build.md) and [Optical Flow Core](docs/optical-flow-core.md).
 
 ## Clean-room and attribution
 

@@ -1,0 +1,19 @@
+#version 450
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(set = 0, binding = 0, r16f) uniform readonly image2D sourceLuma;
+layout(set = 0, binding = 1, r16f) uniform writeonly image2D destinationLuma;
+layout(push_constant) uniform Params { uint width; uint height; } pc;
+float loadClamped(ivec2 p, ivec2 size) {
+    return imageLoad(sourceLuma, clamp(p, ivec2(0), size - ivec2(1))).r;
+}
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    if (p.x >= int(pc.width) || p.y >= int(pc.height)) return;
+    ivec2 srcSize = imageSize(sourceLuma);
+    ivec2 base = p * 2;
+    float a = loadClamped(base, srcSize);
+    float b = loadClamped(base + ivec2(1, 0), srcSize);
+    float c = loadClamped(base + ivec2(0, 1), srcSize);
+    float d = loadClamped(base + ivec2(1, 1), srcSize);
+    imageStore(destinationLuma, p, vec4((a + b + c + d) * 0.25, 0.0, 0.0, 1.0));
+}
