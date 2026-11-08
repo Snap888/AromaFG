@@ -3,7 +3,7 @@
 #include <cmath>
 using namespace aromafg::vk;
 int main() {
- const auto levels=make_pyramid(1919,1079,5,32);
+ const auto levels=make_pyramid(1919,1079,4,32);
  assert(levels.size()==4);
  assert(levels[0].width==1919 && levels[0].height==1079);
  assert(levels[1].width==960 && levels[1].height==540);
@@ -25,7 +25,7 @@ int main() {
      if(pass.kind==FlowPassKind::SearchBackward)++backward;
      if(pass.kind==FlowPassKind::UpsampleFlow)++up;
    }
-   assert(synth==m-1 && forward==3 && backward==3 && up==2);
+   assert(synth==m-1 && forward==3 && backward==3 && up==4);
  }
  assert(make_flow_schedule(0,2).empty());
  assert(make_flow_schedule(3,1).empty());
