@@ -13,7 +13,7 @@ BUILD_DIR="${WORK_DIR}/build-android"
 fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 command -v pkg >/dev/null 2>&1 || fail "Run this script inside Termux."
 pkg update -y
-pkg install -y git gh android-tools curl coreutils grep unzip
+pkg install -y git gh android-tools curl coreutils grep unzip jq
 termux-setup-storage || true
 mkdir -p "$WORK_DIR" "$BUILD_DIR"
 
@@ -46,6 +46,16 @@ ABILIST="$(adb_target shell getprop ro.product.cpu.abilist | tr -d '\r')"
 API="$(adb_target shell getprop ro.build.version.sdk | tr -d '\r')"
 [[ "$ABI" == "arm64-v8a" || ",$ABILIST," == *",arm64-v8a,"* ]] || fail "Target is not arm64-v8a."
 [[ "$API" =~ ^[0-9]+$ ]] && (( API >= 26 )) || fail "Android API must be >= 26; got '$API'."
+
+ARTIFACT_META="$(gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID")"
+META_RUN_ID="$(printf '%s' "$ARTIFACT_META" | jq -r '.workflow_run.id // empty')"
+META_COMMIT="$(printf '%s' "$ARTIFACT_META" | jq -r '.workflow_run.head_sha // empty')"
+META_DIGEST="$(printf '%s' "$ARTIFACT_META" | jq -r '.digest // empty')"
+META_EXPIRED="$(printf '%s' "$ARTIFACT_META" | jq -r '.expired // true')"
+[[ "$META_RUN_ID" == "$RUN_ID" ]] || fail "Artifact belongs to workflow run '$META_RUN_ID', not '$RUN_ID'."
+[[ "$META_COMMIT" == "$EXPECTED_COMMIT" ]] || fail "Artifact source commit mismatch: $META_COMMIT."
+[[ "$META_DIGEST" == "sha256:$EXPECTED_SHA256" ]] || fail "GitHub artifact digest metadata mismatch."
+[[ "$META_EXPIRED" == "false" ]] || fail "GitHub artifact is expired."
 
 printf '\nDownloading artifact %s from workflow run %s...\n' "$ARTIFACT_ID" "$RUN_ID"
 ZIP="$WORK_DIR/aromafg-android-arm64.zip"
