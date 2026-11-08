@@ -285,7 +285,7 @@ int main() {
   if (vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS) return 36;
   const AromaFGStatus reuse_status=aroma_fg_process(engine,&input,&output);
   if (reuse_status!=AROMA_FG_OK || output.generated_frames!=3) {
-   std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\\n",
+   std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\n",
     static_cast<unsigned long long>(input.frame_id),frame.frame_slot,reuse_status,output.generated_frames);
    return 37;
   }
