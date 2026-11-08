@@ -183,13 +183,6 @@ public:
         barrier(cmd, resources_.previous_luma[0].image);
         barrier(cmd, resources_.current_luma[0].image);
 
-        transition_input(cmd, frame.previous_image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT,
-                         frame.previous_restore_layout);
-        transition_input(cmd, frame.current_image, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT,
-                         frame.current_restore_layout);
-
         if (!record_pyramid(cmd, slot)) return AROMA_FG_ERROR_BACKEND;
         if (config_.profiling_enabled && slot.timestamps)
             vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, slot.timestamps, 1);
@@ -224,6 +217,12 @@ public:
                     nonzero_stage(frame.output_stage), VK_IMAGE_LAYOUT_GENERAL,
                     frame.output_restore_layouts[i]);
         }
+        image_barrier(cmd, frame.previous_image, VK_ACCESS_SHADER_READ_BIT, frame.previous_restore_access,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, nonzero_stage(frame.previous_restore_stage),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, frame.previous_restore_layout);
+        image_barrier(cmd, frame.current_image, VK_ACCESS_SHADER_READ_BIT, frame.current_restore_access,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, nonzero_stage(frame.current_restore_stage),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, frame.current_restore_layout);
         if (config_.profiling_enabled && slot.timestamps)
             vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, slot.timestamps, 5);
         slot.has_timestamps = config_.profiling_enabled && slot.timestamps;
@@ -359,7 +358,7 @@ private:
     bool create_slot(Slot& slot) {
         const uint32_t level_count = 8;
         const uint32_t max_sets = 6u * level_count + AROMA_FG_MAX_MULTIPLIER - 1u;
-        const uint32_t storage_count = 18u * level_count + 5u * (AROMA_FG_MAX_MULTIPLIER - 1u);
+        const uint32_t storage_count = 18u * level_count + 5u * AROMA_FG_MAX_MULTIPLIER - 1u;
         const uint32_t combined_count = 2u * AROMA_FG_MAX_MULTIPLIER;
         VkDescriptorPoolSize sizes[2] = {
             {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, storage_count},
@@ -636,9 +635,10 @@ private:
                 auto& flow = direction == 0 ? resources_.forward_flow[level] : resources_.backward_flow[level];
                 auto& confidence = direction == 0 ? resources_.forward_confidence[level] : resources_.backward_confidence[level];
                 auto& seed = direction == 0 ? resources_.forward_seed[level] : resources_.backward_seed[level];
+                VkImageView seed_view = seed.view;
                 if (level == static_cast<int>(resources_.levels.size()) - 1) {
-                    // Coarsest seed is explicitly cleared to zero.
-                    seed = resources_.zero_flow;
+                    // Coarsest seed is explicitly cleared to zero; do not alias the output image.
+                    seed_view = resources_.zero_flow.view;
                 } else {
                     const auto& coarse = direction == 0 ? resources_.forward_flow[level+1] : resources_.backward_flow[level+1];
                     VkDescriptorSet up = allocate_set(slot, upsample_);
@@ -658,7 +658,7 @@ private:
                 const auto& image_b = direction == 0 ? resources_.current_luma[level] : resources_.previous_luma[level];
                 write_storage(set, 0, image_a.view);
                 write_storage(set, 1, image_b.view);
-                write_storage(set, 2, seed.view);
+                write_storage(set, 2, seed_view);
                 write_storage(set, 3, flow.view);
                 write_storage(set, 4, confidence.view);
                 const PushSearch push{extent.width, extent.height, radius, 1, 1u, 1.0f};
