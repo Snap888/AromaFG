@@ -1,6 +1,8 @@
 #include "vulkan_backend.hpp"
 #include "aroma_fg_vulkan.h"
 #include <algorithm>
+#include <limits>
+#include <new>
 #include <utility>
 namespace aromafg::vk {
 bool validate_context(const BorrowedContext& c) noexcept {
@@ -9,8 +11,13 @@ bool validate_context(const BorrowedContext& c) noexcept {
  if(p.apiVersion<VK_API_VERSION_1_1)return false;
  uint32_t n=0;vkGetPhysicalDeviceQueueFamilyProperties(c.physical_device,&n,nullptr);
  if(c.queue_family_index>=n)return false;
- std::vector<VkQueueFamilyProperties> q(n);vkGetPhysicalDeviceQueueFamilyProperties(c.physical_device,&n,q.data());
- return (q[c.queue_family_index].queueFlags&VK_QUEUE_COMPUTE_BIT)!=0;
+ try {
+  std::vector<VkQueueFamilyProperties> q(n);
+  vkGetPhysicalDeviceQueueFamilyProperties(c.physical_device,&n,q.data());
+  return (q[c.queue_family_index].queueFlags&VK_QUEUE_COMPUTE_BIT)!=0;
+ } catch (...) { return false; }
+}
+
 }
 
 extern "C" int aroma_fg_vulkan_validate_context(const AromaFGVulkanContextV1* c) {
@@ -35,6 +42,7 @@ extern "C" int aroma_fg_vulkan_validate_frame(const AromaFGVulkanFrameV1* f,uint
  }
  return 1;
 }
+namespace aromafg::vk {
 PipelineCache::~PipelineCache(){reset();}
 PipelineCache::PipelineCache(PipelineCache&& o) noexcept:device_(std::exchange(o.device_,VK_NULL_HANDLE)),cache_(std::exchange(o.cache_,VK_NULL_HANDLE)){}
 PipelineCache& PipelineCache::operator=(PipelineCache&& o) noexcept {if(this!=&o){reset();device_=std::exchange(o.device_,VK_NULL_HANDLE);cache_=std::exchange(o.cache_,VK_NULL_HANDLE);}return *this;}
@@ -45,14 +53,19 @@ VkResult PipelineCache::create(VkDevice d,const void* data,size_t size) noexcept
 }
 VkResult PipelineCache::export_data(std::vector<uint8_t>& data) const noexcept {
  if(!cache_)return VK_ERROR_INITIALIZATION_FAILED;size_t n=0;VkResult r=vkGetPipelineCacheData(device_,cache_,&n,nullptr);if(r!=VK_SUCCESS)return r;
- data.resize(n);r=vkGetPipelineCacheData(device_,cache_,&n,data.data());if(r==VK_SUCCESS)data.resize(n);else data.clear();return r;
+ try { data.resize(n); } catch (...) { return VK_ERROR_OUT_OF_HOST_MEMORY; }
+ r=vkGetPipelineCacheData(device_,cache_,&n,data.data());if(r==VK_SUCCESS)data.resize(n);else data.clear();return r;
 }
 void PipelineCache::reset() noexcept {if(cache_&&device_)vkDestroyPipelineCache(device_,cache_,nullptr);cache_=VK_NULL_HANDLE;device_=VK_NULL_HANDLE;}
 DescriptorPool::~DescriptorPool(){destroy();}
 DescriptorPool::DescriptorPool(DescriptorPool&& o) noexcept:device_(std::exchange(o.device_,VK_NULL_HANDLE)),pool_(std::exchange(o.pool_,VK_NULL_HANDLE)){}
 DescriptorPool& DescriptorPool::operator=(DescriptorPool&& o) noexcept {if(this!=&o){destroy();device_=std::exchange(o.device_,VK_NULL_HANDLE);pool_=std::exchange(o.pool_,VK_NULL_HANDLE);}return *this;}
 VkResult DescriptorPool::create(VkDevice d,uint32_t sets,uint32_t storage,uint32_t uniforms) noexcept {
- if(!d||!sets)return VK_ERROR_INITIALIZATION_FAILED;destroy();VkDescriptorPoolSize sizes[2]{};uint32_t n=0;
+ if(!d||!sets)return VK_ERROR_INITIALIZATION_FAILED;
+ if((storage && sets>std::numeric_limits<uint32_t>::max()/storage) ||
+    (uniforms && sets>std::numeric_limits<uint32_t>::max()/uniforms))
+  return VK_ERROR_INITIALIZATION_FAILED;
+ destroy();VkDescriptorPoolSize sizes[2]{};uint32_t n=0;
  if(storage){sizes[n]={VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,sets*storage};++n;}
  if(uniforms){sizes[n]={VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,sets*uniforms};++n;}
  if(!n)return VK_ERROR_INITIALIZATION_FAILED;VkDescriptorPoolCreateInfo i{VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};i.maxSets=sets;i.poolSizeCount=n;i.pPoolSizes=sizes;
