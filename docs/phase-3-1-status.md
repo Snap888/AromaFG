@@ -44,11 +44,11 @@ A passing lavapipe run demonstrates the transaction protocol on a software Vulka
 
 ## Remaining Phase 3.1 gates
 
-- [ ] CI passes for the independent legacy client and Vulkan host transaction test.
-- [ ] Review CTest output and synchronization/validation diagnostics.
+- [x] CI passes for the independent legacy client and Vulkan host transaction test (run #42522045599).
+- [x] CTest: 4/4 tests passed; full Vulkan graph smoke passed with synchronization validation enabled. Host transaction test passed on llvmpipe.
 - [ ] Run full AromaFG runtime on a physical Vulkan host, including abandon/cancel/retry.
 - [ ] Confirm slot reuse with real driver fences and timestamp-query retirement.
 - [ ] Test target Adreno with a pinned Turnip build and proprietary driver.
 - [ ] Close remaining API review comments and resolve Phase 2/Phase 1 dependency PRs before merging the stack.
 
-**Exit decision:** test implementation is prepared. Phase 3.1 remains open until the new CI run is green and real-device host validation is completed.
+**Exit decision:** software-driver and independent ABI test gates pass. Phase 3.1 remains open until full AromaFG Vulkan runtime abandon/cancel/retry is exercised on a physical host and target Adreno/Turnip/proprietary drivers are validated.
