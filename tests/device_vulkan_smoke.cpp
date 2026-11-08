@@ -135,7 +135,11 @@ int main() {
   VK_VERSION_MAJOR(props.apiVersion),VK_VERSION_MINOR(props.apiVersion),VK_VERSION_PATCH(props.apiVersion));
  float priority=1.0f;VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
  qci.queueFamilyIndex=family;qci.queueCount=1;qci.pQueuePriorities=&priority;
+ VkPhysicalDeviceFeatures supported_features{};vkGetPhysicalDeviceFeatures(phys,&supported_features);
+ if(!supported_features.shaderStorageImageExtendedFormats){vkDestroyInstance(instance,nullptr);return 28;}
+ VkPhysicalDeviceFeatures enabled_features{};enabled_features.shaderStorageImageExtendedFormats=VK_TRUE;
  VkDeviceCreateInfo dci{VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};dci.queueCreateInfoCount=1;dci.pQueueCreateInfos=&qci;
+ dci.pEnabledFeatures=&enabled_features;
  VkDevice dev=VK_NULL_HANDLE;if(vkCreateDevice(phys,&dci,nullptr,&dev)!=VK_SUCCESS){vkDestroyInstance(instance,nullptr);return 13;}
  VkQueue queue=VK_NULL_HANDLE;vkGetDeviceQueue(dev,family,0,&queue);
  constexpr uint32_t W=320,H=180;
@@ -171,6 +175,7 @@ int main() {
  AromaFGVulkanContextV2 context{};context.struct_size=sizeof(context);
  context.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;context.instance=instance;
  context.physical_device=phys;context.device=dev;context.queue=queue;context.queue_family_index=family;
+ context.enabled_features=enabled_features;
  AromaFGVulkanBackendCreateInfoV1 create{};create.struct_size=sizeof(create);
  create.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;create.context=context;create.in_flight_slots=2;
  AromaFGBackendV1 backend{};if(aroma_fg_vulkan_backend_create(&create,&backend)!=AROMA_FG_OK)return 19;
