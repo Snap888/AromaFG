@@ -18,7 +18,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build g++ python3 libvulkan-dev glslang-tools spirv-tools
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAROMA_FG_BUILD_TESTS=ON -DAROMA_FG_COMPILE_SHADERS=ON
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAROMA_FG_BUILD_TESTS=ON -DAROMA_FG_COMPILE_SHADERS=ON -DAROMA_FG_BUILD_DEVICE_TESTS=ON
       - name: Build library, tests and SPIR-V
         run: cmake --build build --parallel
       - name: Run contract tests
