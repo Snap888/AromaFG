@@ -88,6 +88,10 @@ public:
             properties_.limits.maxComputeWorkGroupSize[0] < 8 ||
             properties_.limits.maxComputeWorkGroupSize[1] < 8 ||
             properties_.limits.maxPushConstantsSize < sizeof(PushSearch) ||
+            properties_.limits.maxPerStageDescriptorStorageImages < 5 ||
+            properties_.limits.maxPerStageDescriptorSampledImages < 2 ||
+            properties_.limits.maxDescriptorSetStorageImages < 5 ||
+            properties_.limits.maxDescriptorSetSampledImages < 2 ||
             !format_support(VK_FORMAT_R16_SFLOAT, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
             !format_support(VK_FORMAT_R16G16_SFLOAT, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) ||
             !format_support(VK_FORMAT_R16_SFLOAT, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) ||
@@ -300,6 +304,8 @@ private:
     }
 
     bool workgroup_extent_supported(VkExtent2D e) const {
+        if (!e.width || !e.height || e.width > properties_.limits.maxImageDimension2D ||
+            e.height > properties_.limits.maxImageDimension2D) return false;
         const uint32_t gx = (e.width + 7u) / 8u, gy = (e.height + 7u) / 8u;
         return gx <= properties_.limits.maxComputeWorkGroupCount[0] &&
                gy <= properties_.limits.maxComputeWorkGroupCount[1];
