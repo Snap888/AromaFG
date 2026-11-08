@@ -161,7 +161,9 @@ public:
             (frame.output_format != VK_FORMAT_R8G8B8A8_UNORM &&
              frame.output_format != VK_FORMAT_R16G16B16A16_SFLOAT))
             return AROMA_FG_ERROR_INVALID_ARGUMENT;
-        if (!format_support(frame.source_format, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) ||
+        const VkFormatFeatureFlags sampled_linear =
+            VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+        if (!format_support(frame.source_format, sampled_linear) ||
             !format_support(frame.output_format, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
             return AROMA_FG_ERROR_UNSUPPORTED;
         if (!workgroup_extent_supported(frame.extent)) return AROMA_FG_ERROR_UNSUPPORTED;
