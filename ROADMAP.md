@@ -41,7 +41,7 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] Validate source linear-filter feature support as well as sampled-image support.
 - [x] Reset temporal history on scene cuts and frame-ID gaps.
 - [x] Document callback payload vs GPU object lifetime, queue order and cancellation preconditions.
-- [ ] Add CI evidence for the transaction API and full Vulkan graph on lavapipe.
+- [x] CI build, transaction contract tests and full Vulkan graph on Mesa lavapipe with synchronization validation (run #42521641315).
 - [ ] Add command-buffer-abandonment and slot-reuse integration tests.
 - [ ] Review/approve Phase 3 PR; test on a real Vulkan host and target Adreno/Turnip devices.
 - [ ] Define robust device-loss recovery and a complete output format conversion/fallback policy.
