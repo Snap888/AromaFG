@@ -44,3 +44,28 @@ Do not assume that a format or extension is available because another Vulkan dri
 
 ## Diagnostic comparison
 Test a direct host-to-ICD path first. If the host environment uses bionic-vulkan-wrapper, test it as a separate host configuration. AromaFG must not detect, load, configure or depend on that wrapper. Record wrapper/driver versions in the test report so compatibility issues can be attributed correctly.
+
+
+## Executable smoke test
+
+Build the aroma_fg_device_smoke target with an Android NDK toolchain and AROMA_FG_BUILD_DEVICE_TESTS=ON. The executable creates a Vulkan compute device, allocates two source images and one storage output, runs the public AromaFG Engine adapter, submits the host command buffer, waits its own fence, collects timestamp results and verifies the midpoint pixel against a known color blend.
+
+Example arm64 build:
+
+~~~sh
+cmake -S . -B build-android \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+  -DAROMA_FG_ENABLE_VULKAN=ON -DAROMA_FG_BUILD_DEVICE_TESTS=ON
+cmake --build build-android --target aroma_fg_device_smoke
+~~~
+
+For a standalone shell environment, push both libaroma_fg.so and aroma_fg_device_smoke to the device and run with LD_LIBRARY_PATH set to that directory. If the target host selects Turnip, run the test in that same Turnip environment; repeat on the stock Qualcomm proprietary driver. Do not load or replace an ICD from inside AromaFG.
+
+~~~sh
+adb push build-android/libaroma_fg.so /data/local/tmp/
+adb push build-android/aroma_fg_device_smoke /data/local/tmp/
+adb shell 'chmod 755 /data/local/tmp/aroma_fg_device_smoke && LD_LIBRARY_PATH=/data/local/tmp /data/local/tmp/aroma_fg_device_smoke'
+~~~
+
+Record the printed device name/vendor/device/driver version and preserve the complete log. A passing smoke test proves the minimal compute graph and output readback on that driver; it does not replace sustained game/compositor tests or synchronization validation with the Khronos Validation Layer. The device executable is not run by hosted CI.
