@@ -41,6 +41,16 @@ The smoke executable creates its own Vulkan instance/device/queue. It is not an 
 - Android arm64-v8a cross-build passed in run #42524916969, including the shared library, contract/planner test binaries and standalone Vulkan smoke executable.
 - The Android artifact bundle includes the exact source commit metadata. The cross-build cannot execute binaries on a physical device; no Android hardware result is claimed.
 
+## Termux launcher
+
+The optional `tools/run-aromafg-termux.sh` helper runs from Termux on the Android target. It installs Termux packages, authenticates GitHub CLI, pairs/connects wireless ADB when needed, requires exactly one authorized arm64-v8a target with API 26+, downloads a pinned GitHub Actions artifact, verifies the ZIP SHA-256 and embedded source commit, then downloads and syntax-checks the matching ADB runner.
+
+~~~sh
+bash tools/run-aromafg-termux.sh
+~~~
+
+The default run/artifact/hash/commit values are reproducibility pins for the recorded CI artifact. When a newer CI artifact is published, override `AROMAFG_RUN_ID`, `AROMAFG_ARTIFACT_ID`, `AROMAFG_ARTIFACT_SHA256`, `AROMAFG_BUILD_COMMIT` and `AROMAFG_RUNNER_COMMIT` together. Do not update only one pin. The helper has not been executed on a physical device in CI; review its output and attach the generated report.
+
 ## Outstanding physical validation
 
 - Run the ADB smoke on a named physical Adreno device with exact driver details.
