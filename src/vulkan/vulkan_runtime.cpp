@@ -38,6 +38,7 @@ struct Slot {
     bool has_timestamps = false;
     uint64_t recorded_frame = 0;
     uint64_t completed_frame = 0;
+    bool resources_initialized_before_record = false;
 };
 
 struct Resources {
@@ -179,6 +180,7 @@ public:
         // The host must call cancel_frame only after abandoning/resetting it.
         slot.recording = true;
         slot.recorded_frame = input.frame_id;
+        slot.resources_initialized_before_record = resources_.initialized;
         VkCommandBuffer cmd = frame.command_buffer;
         if (config_.profiling_enabled && slot.timestamps)
             vkCmdResetQueryPool(cmd, slot.timestamps, 0, 6);
@@ -256,6 +258,7 @@ public:
             slot.completed_frame = frame_id;
             slot.has_timestamps = config_.profiling_enabled && slot.timestamps;
             slot.recorded_frame = 0;
+            slot.resources_initialized_before_record = false;
             return AROMA_FG_OK;
         }
         // The core may request cancellation/commit after validation failed before
@@ -271,6 +274,11 @@ public:
                 return AROMA_FG_ERROR_BACKEND;
             slot.recording = false;
             slot.recorded_frame = 0;
+            // prepare_resources() changes this CPU-side flag while recording.
+            // Roll it back when the host discards the command buffer so the next
+            // recording uses the actual pre-transaction image initialization state.
+            resources_.initialized = slot.resources_initialized_before_record;
+            slot.resources_initialized_before_record = false;
             return AROMA_FG_OK;
         }
         // Validation may fail before any Vulkan command or slot reservation.
