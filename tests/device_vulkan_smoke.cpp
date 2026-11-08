@@ -272,7 +272,8 @@ int main() {
  // Exercise the actual Vulkan FG runtime's descriptor/query slot lifecycle.
  // The host waits for the submission fence before resetting the command pool
  // and reusing a slot. First use slot 1, then reuse slot 0 from frame 1.
- for (const auto& reuse_case : {std::pair<uint64_t,uint32_t>{2u,1u}, {3u,0u}}) {
+ const std::pair<uint64_t,uint32_t> reuse_cases[]={{2u,1u},{3u,0u}};
+ for (const auto& reuse_case : reuse_cases) {
   if (vkResetFences(dev,1,&fence)!=VK_SUCCESS) return 34;
   if (vkResetCommandPool(dev,pool,0)!=VK_SUCCESS) return 35;
   for (uint32_t i=0;i<3;++i) output_layouts[i]=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
