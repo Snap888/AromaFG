@@ -45,7 +45,7 @@ if [[ -z "$ADB_SERIAL" ]]; then
   fi
   ADB_SERIAL="${CONNECTED_SERIALS[0]}"
 fi
-if ! printf '%s\\n' "${CONNECTED_SERIALS[@]}" | grep -Fxq -- "$ADB_SERIAL"; then
+if ! printf '%s\n' "${CONNECTED_SERIALS[@]}" | grep -Fxq -- "$ADB_SERIAL"; then
   echo "ADB serial '$ADB_SERIAL' is not an authorized connected device." >&2
   adb devices -l >&2
   exit 2
@@ -53,9 +53,9 @@ fi
 adb_target() { adb -s "$ADB_SERIAL" "$@"; }
 adb_target get-state >/dev/null
 
-DEVICE_ABI="$(adb_target shell getprop ro.product.cpu.abi | tr -d '\\r')"
-DEVICE_ABILIST="$(adb_target shell getprop ro.product.cpu.abilist | tr -d '\\r')"
-DEVICE_API="$(adb_target shell getprop ro.build.version.sdk | tr -d '\\r')"
+DEVICE_ABI="$(adb_target shell getprop ro.product.cpu.abi | tr -d '\r')"
+DEVICE_ABILIST="$(adb_target shell getprop ro.product.cpu.abilist | tr -d '\r')"
+DEVICE_API="$(adb_target shell getprop ro.build.version.sdk | tr -d '\r')"
 if [[ "$DEVICE_ABI" != "arm64-v8a" && ",$DEVICE_ABILIST," != *",arm64-v8a,"* ]]; then
   echo "Device does not advertise arm64-v8a (primary='$DEVICE_ABI', list='$DEVICE_ABILIST')." >&2
   exit 2
