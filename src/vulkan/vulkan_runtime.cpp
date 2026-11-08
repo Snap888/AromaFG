@@ -758,11 +758,12 @@ AromaFGStatus backend_process(void* user, const AromaFGFrameInput* input, AromaF
 void backend_shutdown(void* user) { delete static_cast<BackendState*>(user); }
 
 } // namespace
+} // namespace aromafg::vk
 
 extern "C" int aroma_fg_vulkan_validate_context(const AromaFGVulkanContextV2* c) {
     if (!c || c->struct_size < sizeof(*c) ||
         c->api_version != AROMA_FG_VULKAN_INTEROP_VERSION) return 0;
-    return validate_context({c->instance,c->physical_device,c->device,c->queue,c->queue_family_index}) ? 1 : 0;
+    return aromafg::vk::validate_context({c->instance,c->physical_device,c->device,c->queue,c->queue_family_index}) ? 1 : 0;
 }
 
 extern "C" int aroma_fg_vulkan_validate_frame(const AromaFGVulkanFrameV2* f, uint32_t outputs) {
@@ -792,7 +793,7 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_create(
     if (!info || !backend || info->struct_size < sizeof(*info) ||
         info->api_version != AROMA_FG_VULKAN_INTEROP_VERSION ||
         !aroma_fg_vulkan_validate_context(&info->context)) return AROMA_FG_ERROR_INVALID_ARGUMENT;
-    auto* state = new (std::nothrow) BackendState();
+    auto* state = new (std::nothrow) aromafg::vk::BackendState();
     if (!state) return AROMA_FG_ERROR_BACKEND;
     state->context = info->context;
     state->slots = info->in_flight_slots ? info->in_flight_slots : 3u;
@@ -823,7 +824,7 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_collect_timing(
         !timing || timing->struct_size < sizeof(*timing) ||
         timing->api_version != AROMA_FG_VULKAN_INTEROP_VERSION)
         return AROMA_FG_ERROR_INVALID_ARGUMENT;
-    auto* state = static_cast<BackendState*>(backend->user_data);
+    auto* state = static_cast<aromafg::vk::BackendState*>(backend->user_data);
     if (!state->runtime) return AROMA_FG_ERROR_BACKEND;
     return state->runtime->collect(slot, *timing);
 }
