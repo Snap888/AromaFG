@@ -53,3 +53,13 @@ Win-FG documents bidirectional flow, confidence/occlusion gating, anti-ghost fil
 ## Licensing and provenance
 
 The reviewed Win-FG repository declares MIT. Its `NOTICE_FIDELITYFX_OPTICALFLOW.md` identifies AMD FidelityFX SDK optical-flow shader adaptations and includes the MIT notice. AromaFG does not copy those files. Its own provenance and license notices remain authoritative for AromaFG contributions.
+
+
+## Reviewed source map
+
+- [README and measured device results](https://github.com/Snap888/win-fg/blob/master/README.md)
+- [FrameGen resource, pipeline and teardown implementation](https://github.com/Snap888/win-fg/blob/master/src/framegen.cpp)
+- [Per-frame descriptor updates and dispatch graph](https://github.com/Snap888/win-fg/blob/master/src/record_impl.inc)
+- [Layer Vulkan dispatch table](https://github.com/Snap888/win-fg/blob/master/src/vk_dispatch.hpp)
+- [Device bring-up and compositor failure analysis](https://github.com/Snap888/win-fg/blob/master/docs/BRINGUP.md)
+- [FidelityFX optical-flow provenance notice](https://github.com/Snap888/win-fg/blob/master/NOTICE_FIDELITYFX_OPTICALFLOW.md)
