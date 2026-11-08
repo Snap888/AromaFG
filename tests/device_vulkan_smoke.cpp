@@ -8,6 +8,7 @@
 #include <cmath>
 #include <string>
 #include <atomic>
+#include <utility>
 
 namespace {
 std::atomic_uint32_t validation_errors{0};
@@ -267,6 +268,47 @@ int main() {
   std::abs(int(r1)-102)<24&&std::abs(int(g1)-102)<24&&std::abs(int(b1)-102)<24&&
   std::abs(int(r2)-140)<24&&std::abs(int(g2)-128)<24&&std::abs(int(b2)-115)<24;
  vkUnmapMemory(dev,readback_mem);
+
+ // Exercise the actual Vulkan FG runtime's descriptor/query slot lifecycle.
+ // The host waits for the submission fence before resetting the command pool
+ // and reusing a slot. First use slot 1, then reuse slot 0 from frame 1.
+ const std::pair<uint64_t,uint32_t> reuse_cases[]={{2u,1u},{3u,0u}};
+ for (const auto& reuse_case : reuse_cases) {
+  if (vkResetFences(dev,1,&fence)!=VK_SUCCESS) return 34;
+  if (vkResetCommandPool(dev,pool,0)!=VK_SUCCESS) return 35;
+  for (uint32_t i=0;i<3;++i) output_layouts[i]=VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+  frame.frame_slot=reuse_case.second;
+  frame.output_stage=VK_PIPELINE_STAGE_TRANSFER_BIT;
+  frame.output_access=VK_ACCESS_TRANSFER_READ_BIT;
+  input.frame_id=reuse_case.first;
+  input.timestamp_ns=reuse_case.first;
+  output={}; output.struct_size=sizeof(output);
+  if (vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS) return 36;
+  const AromaFGStatus reuse_status=aroma_fg_process(engine,&input,&output);
+  if (reuse_status!=AROMA_FG_OK || output.generated_frames!=3) {
+   std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\n",
+    static_cast<unsigned long long>(input.frame_id),frame.frame_slot,reuse_status,output.generated_frames);
+   return 37;
+  }
+  if (vkEndCommandBuffer(cmd)!=VK_SUCCESS) {
+   vkResetCommandPool(dev,pool,0);
+   aroma_fg_cancel_frame(engine,input.frame_id);
+   return 38;
+  }
+  if (vkQueueSubmit(queue,1,&submit,fence)!=VK_SUCCESS) {
+   vkResetCommandPool(dev,pool,0);
+   aroma_fg_cancel_frame(engine,input.frame_id);
+   return 39;
+  }
+  if (aroma_fg_commit_frame(engine,input.frame_id)!=AROMA_FG_OK) return 40;
+  if (vkWaitForFences(dev,1,&fence,VK_TRUE,UINT64_MAX)!=VK_SUCCESS) return 41;
+  AromaFGVulkanTimingV1 reuse_timing{};
+  reuse_timing.struct_size=sizeof(reuse_timing);
+  reuse_timing.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;
+  const AromaFGStatus collect_status=aroma_fg_vulkan_backend_collect_timing(&backend,frame.frame_slot,&reuse_timing);
+  if (collect_status!=AROMA_FG_OK && collect_status!=AROMA_FG_BYPASSED) return 42;
+ }
+ std::printf("RUNTIME_SLOT_REUSE=PASS slots=[1,0] fence_wait_before_pool_and_slot_reuse\\n");
  std::printf("FG status=%s generated=%u timing_status=%d preprocess_ms=%.3f flow_ms=%.3f synth_ms=%.3f phases=[%u,%u,%u][%u,%u,%u][%u,%u,%u]\n",
   pixel_ok?"PASS":"FAIL",output.generated_frames,timing_status,timing.preprocess_gpu_ms,timing.flow_gpu_ms,timing.synthesis_gpu_ms,
   r0,g0,b0,r1,g1,b1,r2,g2,b2);
