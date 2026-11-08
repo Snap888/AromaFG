@@ -1,12 +1,12 @@
 # Phase 3.1 — Host Integration Validation
 
-**Branch:** `feature/phase-3-1-host-validation-v2`  
+**Branch:** `feature/phase-3-1-host-validation-final`  
 **Base:** `feature/phase-3-host-lifecycle`  
 **Scope:** exercise the host-side command-buffer transaction contract in the Vulkan device smoke test.
 
 ## Added integration scenario
 
-The Vulkan smoke test now exercises the real adapter and core transaction callbacks in this order:
+The Vulkan smoke test exercises the real adapter and core transaction callbacks in this order:
 
 1. Begin recording a host-owned Vulkan command buffer and record source-image setup.
 2. Call `aroma_fg_process` for frame 1, allowing AromaFG to append compute work.
@@ -17,7 +17,7 @@ The Vulkan smoke test now exercises the real adapter and core transaction callba
 7. Call `aroma_fg_commit_frame(engine, 1)` only after successful `vkQueueSubmit`.
 8. Wait for the fence before collecting timing/readback and destroying Vulkan resources.
 
-This covers the critical cancellation/retry path against an actual Vulkan implementation, rather than only a mock backend. The existing smoke test continues to validate the generated output phases and synchronization validation when the validation layer is available.
+This covers the critical cancellation/retry path against an actual Vulkan implementation, rather than only a mock backend. The existing smoke test continues to validate generated output phases and synchronization validation when the validation layer is available.
 
 ## What this does not prove
 
