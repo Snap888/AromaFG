@@ -108,7 +108,10 @@ public:
         if (vkCreateSampler(context_.device, &sampler_info, nullptr, &sampler_) != VK_SUCCESS)
             return false;
 
-        if (cache_.create(context_.device, initial_cache, initial_cache_size) != VK_SUCCESS) return false;
+        VkResult cache_result = cache_.create(context_.device, initial_cache, initial_cache_size);
+        if (cache_result != VK_SUCCESS && initial_cache_size)
+            cache_result = cache_.create(context_.device);
+        if (cache_result != VK_SUCCESS) return false;
         if (!create_pipeline(luma_, embedded::luma_comp, embedded::luma_comp_bytes,
                              {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
                               {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE}}, sizeof(Push2D)) ||
