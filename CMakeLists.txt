@@ -4,6 +4,11 @@ project(AromaFG VERSION 0.1.0 LANGUAGES C CXX)
 option(AROMA_FG_BUILD_TESTS "Build AromaFG portable contract tests" ON)
 option(AROMA_FG_BUILD_SHARED "Build shared AromaFG library" ON)
 option(AROMA_FG_COMPILE_SHADERS "Compile GLSL shaders when glslangValidator is available" ON)
+option(AROMA_FG_ENABLE_VULKAN "Build Vulkan interop and orchestration helpers" ON)
+
+if(AROMA_FG_ENABLE_VULKAN)
+  find_package(Vulkan REQUIRED)
+endif()
 
 set(AROMA_FG_LIBRARY_TYPE STATIC)
 if(AROMA_FG_BUILD_SHARED)
@@ -14,6 +19,11 @@ add_library(aroma_fg ${AROMA_FG_LIBRARY_TYPE}
   src/api/aroma_fg.cpp
   src/core/engine.cpp
 )
+
+if(AROMA_FG_ENABLE_VULKAN)
+  target_sources(aroma_fg PRIVATE src/vulkan/vulkan_backend.cpp)
+  target_link_libraries(aroma_fg PUBLIC Vulkan::Vulkan)
+endif()
 add_library(AromaFG::AromaFG ALIAS aroma_fg)
 target_include_directories(aroma_fg PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -37,7 +47,15 @@ if(AROMA_FG_BUILD_TESTS)
   enable_testing()
   add_executable(aroma_fg_contract_tests tests/test_engine.cpp)
   target_link_libraries(aroma_fg_contract_tests PRIVATE AromaFG::AromaFG)
+  target_compile_options(aroma_fg_contract_tests PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UNDEBUG>")
   add_test(NAME aroma_fg_contract_tests COMMAND aroma_fg_contract_tests)
+  if(AROMA_FG_ENABLE_VULKAN)
+    add_executable(aroma_fg_vulkan_plan_tests tests/test_vulkan_plan.cpp)
+    target_include_directories(aroma_fg_vulkan_plan_tests PRIVATE src)
+    target_compile_options(aroma_fg_vulkan_plan_tests PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/UNDEBUG>" "$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-UNDEBUG>")
+    target_link_libraries(aroma_fg_vulkan_plan_tests PRIVATE AromaFG::AromaFG)
+    add_test(NAME aroma_fg_vulkan_plan_tests COMMAND aroma_fg_vulkan_plan_tests)
+  endif()
 endif()
 
 if(AROMA_FG_COMPILE_SHADERS)
