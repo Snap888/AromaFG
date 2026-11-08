@@ -7,14 +7,14 @@ layout(set=0,binding=3,rg16f) uniform readonly image2D backwardFlow;
 layout(set=0,binding=4,r16f) uniform readonly image2D forwardConfidence;
 layout(set=0,binding=5,r16f) uniform readonly image2D backwardConfidence;
 layout(set=0,binding=6,rgba8) uniform writeonly image2D generatedFrame;
-layout(push_constant) uniform Params { uint width; uint height; float phase; float confidenceFloor; } pc;
+layout(push_constant) uniform Params { uint width; uint height; float phase; float confidenceFloor; float flowScale; } pc;
 vec2 clampUv(vec2 uv){return clamp(uv,vec2(0.5)/vec2(pc.width,pc.height),vec2(1.0)-vec2(0.5)/vec2(pc.width,pc.height));}
 void main(){
  ivec2 p=ivec2(gl_GlobalInvocationID.xy);
  if(p.x>=int(pc.width)||p.y>=int(pc.height))return;
  vec2 uv=(vec2(p)+0.5)/vec2(pc.width,pc.height);
  float t=clamp(pc.phase,0.001,0.999);
- vec2 f=imageLoad(forwardFlow,p).xy,b=imageLoad(backwardFlow,p).xy;
+ vec2 f=imageLoad(forwardFlow,p).xy*pc.flowScale,b=imageLoad(backwardFlow,p).xy*pc.flowScale;
  vec2 prevUv=clampUv(uv-t*f/vec2(pc.width,pc.height));
  vec2 currUv=clampUv(uv-(1.0-t)*b/vec2(pc.width,pc.height));
  vec4 a=texture(previousFrame,prevUv),c=texture(currentFrame,currUv);
