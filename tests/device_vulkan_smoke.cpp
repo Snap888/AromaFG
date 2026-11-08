@@ -184,28 +184,7 @@ int main() {
  AromaFGConfig config{};aroma_fg_default_config(&config);config.enabled=1;config.multiplier=4;
  AromaFGEngine* engine=aroma_fg_create(&config,&backend);if(!engine)return 20;
 
- // Host integration case A: abandon a partially recorded frame, reset the host
- // command pool, then cancel. The same frame_id must be accepted on retry.
- // Retry frame_id=1 after the host-abandon/cancel sequence above.
- if(aroma_fg_process(engine,&input,&output)!=AROMA_FG_OK)return 30;
- if(vkResetCommandPool(dev,pool,0)!=VK_SUCCESS)return 31;
- if(aroma_fg_cancel_frame(engine,input.frame_id)!=AROMA_FG_OK)return 32;
- if(vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS)return 33;
- // Re-record all source/output initialization discarded with the command buffer.
- image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
-  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
- image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
-  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
- vkCmdClearColorImage(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&a,1,&range);
- vkCmdClearColorImage(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&b,1,&range);
- image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
-  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
- image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
-  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
- for(auto& image:out_images_test)
-  image_barrier(cmd,image.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,0,
-   VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-
+ // Build the host frame payload before the first recording attempt.
  VkImage output_images[3]{};VkImageView output_views[3]{};
  VkImageLayout output_layouts[3]{VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_GENERAL};
  VkImageLayout output_restore[3]{VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL};
@@ -229,6 +208,27 @@ int main() {
  input.width=W;input.height=H;input.format=static_cast<uint32_t>(fmt);
  input.host_frame=reinterpret_cast<uintptr_t>(&frame);
  AromaFGFrameOutput output{};output.struct_size=sizeof(output);
+
+ // Host integration case A: record, abandon/reset, cancel, then retry the same ID.
+ if(aroma_fg_process(engine,&input,&output)!=AROMA_FG_OK)return 30;
+ if(vkResetCommandPool(dev,pool,0)!=VK_SUCCESS)return 31;
+ if(aroma_fg_cancel_frame(engine,input.frame_id)!=AROMA_FG_OK)return 32;
+ if(vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS)return 33;
+ // Re-record all source/output initialization discarded with the command buffer.
+ image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
+ image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
+ vkCmdClearColorImage(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&a,1,&range);
+ vkCmdClearColorImage(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&b,1,&range);
+ image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ for(auto& image:out_images_test)
+  image_barrier(cmd,image.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,0,
+   VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+
  const AromaFGStatus status=aroma_fg_process(engine,&input,&output);
  if(status!=AROMA_FG_OK||output.generated_frames!=3){std::printf("PROCESS_FAIL status=%d generated=%u\n",status,output.generated_frames);return 21;}
  VkBufferImageCopy copy{};copy.imageSubresource={VK_IMAGE_ASPECT_COLOR_BIT,0,0,1};
