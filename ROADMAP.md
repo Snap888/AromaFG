@@ -6,15 +6,16 @@ This roadmap is based on the repository requirements and the review of SnapFrame
 - [x] Public repository bootstrap and project scope.
 - [x] Record clean-room analysis and selected architecture decisions.
 - [x] Define host/Vulkan ownership, telemetry semantics and validation gates.
-- [ ] Finalize MPL-2.0 licensing and contribution policy.
-- [ ] Land versioned C ABI and portable lifecycle tests.
+- [x] Finalize MPL-2.0 licensing and contribution policy.
+- [x] Land versioned C ABI and initial portable lifecycle contract tests.
 
 ## Phase 1 — portable engine and baseline FG
 - [ ] Backend-neutral C++20 engine, frame ordering, bypass and history reset.
 - [ ] Host-borrowed Vulkan interop contract.
-- [ ] Luma/downsample, pyramid, bidirectional block matching, fusion and FB consistency.
-- [ ] One flow solve per source pair; phase-specific ×2/×3/×4 synthesis.
-- [ ] Offline shader compilation and SPIR-V validation.
+- [x] Initial GLSL sources: luma, downsample, bidirectional local SAD search, FB consistency and phase-specific interpolation.
+- [ ] Pyramid orchestration, flow fusion and one-flow-per-pair chain integration.
+- [ ] Offline shader compilation and SPIR-V validation on a configured Vulkan SDK host.
+- [ ] GPU reference tests and physical Adreno/Turnip validation.
 - [ ] Real-frame fallback for every unsupported/error path.
 
 ## Phase 1.5 — quality stack
