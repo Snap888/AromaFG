@@ -68,6 +68,7 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - [Build](docs/build.md)
 - [Roadmap](ROADMAP.md)
 - [Phase 1 documentation baseline](docs/phase-1-status.md)
+- [Phase 2 technology research](docs/phase-2-research.md)
 
 ## Build and test
 
