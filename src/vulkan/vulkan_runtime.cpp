@@ -456,13 +456,14 @@ private:
     }
 
     bool ensure_resources(VkExtent2D extent, bool host_quiescent) {
+        try {
         if (resources_.extent.width == extent.width && resources_.extent.height == extent.height &&
             !resources_.levels.empty()) return true;
         if (!resources_.levels.empty() && !host_quiescent) return false;
         destroy_resources();
         resources_.extent = extent;
         resources_.levels = make_pyramid(extent.width, extent.height, 8, 16);
-        if (resources_.levels.size() < 2) return false;
+        if (resources_.levels.size() < 2) { destroy_resources(); return false; }
         const VkImageUsageFlags storage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
         auto make_levels = [&](std::vector<Image>& images, VkFormat format, VkImageUsageFlags usage) {
             images.resize(resources_.levels.size());
@@ -490,6 +491,10 @@ private:
             return false;
         }
         return true;
+        } catch (...) {
+            destroy_resources();
+            return false;
+        }
     }
 
     template<class F> void for_each_image(F&& fn) {
