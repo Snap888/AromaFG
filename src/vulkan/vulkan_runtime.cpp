@@ -147,6 +147,7 @@ public:
             frame.frame_slot >= slots_ || frame.extent.width != input.width ||
             frame.extent.height != input.height ||
             frame.source_format == VK_FORMAT_UNDEFINED ||
+            (input.format != 0u && input.format != static_cast<uint32_t>(frame.source_format)) ||
             (frame.output_format != VK_FORMAT_R8G8B8A8_UNORM &&
              frame.output_format != VK_FORMAT_R16G16B16A16_SFLOAT))
             return AROMA_FG_ERROR_INVALID_ARGUMENT;
@@ -733,9 +734,11 @@ struct BackendState {
 AromaFGStatus backend_initialize(void* user, const AromaFGConfig* config) {
     auto* state = static_cast<BackendState*>(user);
     if (!state || !config) return AROMA_FG_ERROR_INVALID_ARGUMENT;
-    state->runtime = std::make_unique<Runtime>(state->context, state->slots);
-    return state->runtime->initialize(*config, state->initial_cache.data(), state->initial_cache.size())
-        ? AROMA_FG_OK : AROMA_FG_ERROR_UNSUPPORTED;
+    try {
+        state->runtime = std::make_unique<Runtime>(state->context, state->slots);
+        return state->runtime->initialize(*config, state->initial_cache.data(), state->initial_cache.size())
+            ? AROMA_FG_OK : AROMA_FG_ERROR_UNSUPPORTED;
+    } catch (...) { state->runtime.reset(); return AROMA_FG_ERROR_BACKEND; }
 }
 void backend_reset(void*, uint32_t) {}
 AromaFGStatus backend_update(void* user, const AromaFGConfig* config) {
@@ -749,7 +752,8 @@ AromaFGStatus backend_process(void* user, const AromaFGFrameInput* input, AromaF
     if (!state || !state->runtime || !input || !output || !input->host_frame)
         return AROMA_FG_ERROR_INVALID_ARGUMENT;
     const auto* frame = reinterpret_cast<const AromaFGVulkanFrameV2*>(input->host_frame);
-    return state->runtime->record(*input, *frame, *output);
+    try { return state->runtime->record(*input, *frame, *output); }
+    catch (...) { return AROMA_FG_ERROR_BACKEND; }
 }
 void backend_shutdown(void* user) { delete static_cast<BackendState*>(user); }
 
@@ -794,8 +798,10 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_create(
     state->slots = info->in_flight_slots ? info->in_flight_slots : 3u;
     if (info->pipeline_cache_size && !info->pipeline_cache_data) { delete state; return AROMA_FG_ERROR_INVALID_ARGUMENT; }
     if (info->pipeline_cache_size) {
-        const auto* begin = static_cast<const uint8_t*>(info->pipeline_cache_data);
-        state->initial_cache.assign(begin, begin + info->pipeline_cache_size);
+        try {
+            const auto* begin = static_cast<const uint8_t*>(info->pipeline_cache_data);
+            state->initial_cache.assign(begin, begin + info->pipeline_cache_size);
+        } catch (...) { delete state; return AROMA_FG_ERROR_BACKEND; }
     }
     if (state->slots < 2 || state->slots > 4) { delete state; return AROMA_FG_ERROR_INVALID_ARGUMENT; }
     std::memset(backend, 0, sizeof(*backend));
@@ -830,7 +836,9 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_export_pipeline_cache(
     auto* state = static_cast<aromafg::vk::BackendState*>(backend->user_data);
     if (!state->runtime) return AROMA_FG_ERROR_BACKEND;
     std::vector<uint8_t> bytes;
-    const VkResult result = state->runtime->export_cache(bytes);
+    VkResult result = VK_ERROR_UNKNOWN;
+    try { result = state->runtime->export_cache(bytes); }
+    catch (...) { return AROMA_FG_ERROR_BACKEND; }
     if (result != VK_SUCCESS) return AROMA_FG_ERROR_BACKEND;
     if (!data) { *inout_size = bytes.size(); return AROMA_FG_OK; }
     if (*inout_size < bytes.size()) { *inout_size = bytes.size(); return AROMA_FG_ERROR_INVALID_ARGUMENT; }
