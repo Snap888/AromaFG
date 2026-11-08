@@ -47,6 +47,8 @@ Planned quality experiments: global-motion pre-warp (C1), edge-preserving flow r
 - [Snap_AI_Engine branch analysis](docs/analysis-snap-ai-engine.md)
 - [Algorithm decisions](docs/algorithm-decisions.md)
 - [Host/Vulkan ownership contract](docs/vulkan-host-contract.md)
+- [Vulkan backend milestone](docs/vulkan-backend.md)
+- [bionic-vulkan-wrapper analysis](docs/analysis-bionic-vulkan-wrapper.md)
 - [Integration guide](docs/integration.md)
 - [Engineer mode and telemetry](docs/engineer-mode.md)
 - [Validation and benchmark plan](docs/testing.md)
