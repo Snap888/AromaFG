@@ -6,11 +6,11 @@
 
 ## 1. Executive decision
 
-1. Keep the existing block-matching implementation as the deterministic reference and fallback while the next algorithm is evaluated.
-2. Select **DIS-style dense optical flow as the first alternative to prototype and benchmark**. Do not copy WFG/OpenCV source or shaders in this phase. Implement independently from the published algorithm description, with file-level provenance.
-3. Keep Farneback as an optional coarse-level/hybrid experiment, not the default standalone estimator.
-4. Keep Lucas–Kanade for sparse/global-motion estimation (C1), not as the sole dense-flow engine.
-5. Do not add a neural runtime or model to the MVP. AI remains an optional later refinement path. ncnn is the first runtime to investigate for a Vulkan-oriented prototype; QNN is a device-specific alternative only after the exact SoC is identified. MNN and ONNX Runtime remain comparison candidates, not dependencies.
+1. Keep the existing AromaFG block matcher as the control and deterministic fallback while the alternatives are evaluated.
+2. Make the **Win-FG FSR3-family block-SAD pipeline** the first high-priority quality/reference comparison: it has a detailed file-level provenance ledger and reports native Adreno 750 validation with C1/C2 and anti-ghost enabled. It is a sibling reference, not an AromaFG result; no source is copied in this phase.
+3. Evaluate the **WinNative WFG DIS/Farneback hybrid** as the second alternative. Its recent Adreno 750 report is promising, but the exact target device and host conditions must be tested before selecting it over block-SAD.
+4. Keep Lucas–Kanade for sparse/global-motion estimation (C1), not as the sole dense-flow engine. Keep Farneback as an optional coarse-level/hybrid estimator.
+5. Do not add a neural full-frame interpolation runtime/model to the MVP. On-device measurements in the Win-FG research record show the tested tiny IFNet-lite path far outside the target budget; a conv-only residual remains a separate, unproven future experiment. ncnn is a runtime candidate for such a future prototype, not an MVP dependency.
 6. MVP target: **×2 first**, host-side integration, real-frame fallback, one flow solution per source pair, no CPU full-frame readback, and measurable quality/performance gates. ×3/×4 follow only after ×2 passes.
 
 This is a research selection, not a claim that DIS has already been implemented or tested in AromaFG.
@@ -21,6 +21,7 @@ The revisions below are immutable review anchors checked for this report. Re-che
 
 | Candidate | Reviewed revision | What it is useful for | Decision |
 |---|---|---|---|
+| [Snap888/win-fg (Win-FG Native)](https://github.com/Snap888/win-fg/tree/fbc69ed6c5bf16b824d0a29bd8b171675101f9dd) | `fbc69ed6c5bf16b824d0a29bd8b171675101f9dd` (2026-09-09) | Clean-room FSR3-family SAD flow, bidirectional flow, C1 affine LK, C2 TV-L1, anti-ghost, native compositor path, provenance ledger | Highest-priority sibling reference; possible future file-by-file reuse only after explicit authorization and audit |
 | [WinNative WFG](https://github.com/WinNative-Emu/WinNative/tree/239ab0ea8ee3b1cdb03e5b09aaf8e4c60228f739/app/src/main/cpp/wfg) | `239ab0ea8ee3b1cdb03e5b09aaf8e4c60228f739` (2026-10-25) | Vulkan DIS implementation, Farneback/DIS hybrid, Android/Adreno experience | Highest-priority algorithm/performance reference; no copy in this phase |
 | [Practical-RIFE](https://github.com/hzwer/Practical-RIFE/tree/bbfd2ea90910789a860ea3e2b32a240cd577b75e) | `bbfd2ea90910789a860ea3e2b32a240cd577b75e` (2026-08-27) | Practical learned interpolation models, scale and multi-frame choices | Optional AI quality reference |
 | [rife-ncnn-vulkan](https://github.com/nihui/rife-ncnn-vulkan/tree/a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7) | `a7532fc3f9f8f008cd6eecd6f2ffe2a9698e0cf7` (2022-10-23) | C++/ncnn/Vulkan inference deployment example | Runtime integration reference; old upstream revision |
@@ -34,6 +35,7 @@ The revisions below are immutable review anchors checked for this report. Re-che
 
 ### Revision caveats
 
+- Win-FG's immutable review anchor is an MIT-licensed repository with a detailed `docs/PROVENANCE.md` ledger. Its README reports native-mode device results on Adreno 750; those are upstream claims, not AromaFG measurements or evidence for another GPU/host.
 - WFG's immutable review anchor is the WinNative commit that explicitly records the WFG submodule's MIT relicensing and a Farneback/DIS hybrid update. The enclosing WinNative project has a different license; do not infer the WFG subtree's license for the whole application.
 - The RIFE ncnn repository's reviewed commit is old. It proves the implementation pattern exists, not that its dependencies, models or build scripts are current.
 - The model repositories' current commits do not pin externally hosted checkpoint archives. Before any model is downloaded or redistributed, record its exact filename, URL, version, SHA-256, model card and license statement.
@@ -42,6 +44,7 @@ The revisions below are immutable review anchors checked for this report. Re-che
 
 | Artifact | Observed license/status | AromaFG decision |
 |---|---|---|
+| Snap888/win-fg repository at the pinned commit | MIT; its `docs/PROVENANCE.md` identifies FSR3-derived optical-flow passes and marks C1, C2, synthesis and host code as original/reimplemented components | Highest-value sibling reference. Do not assume every third-party item is cleared solely by the root MIT file; follow its provenance ledger and audit exact files before any reuse |
 | WFG implementation subtree at the pinned commit | MIT license at `app/src/main/cpp/wfg/LICENSE`; license notice also attributes DIS and Farneback lineage to OpenCV | Can be considered for a later, file-by-file reuse review. Current choice is independent implementation from algorithm literature; preserve MIT notice if any file is ever imported |
 | OpenCV 4.5+ reference code | Apache-2.0; older OpenCV releases used 3-clause BSD | Do not paste source into AromaFG. If any code is reused later, retain exact version and notices and audit each file |
 | WinNative host/compositor | Root project is GPL-3.0; WFG is a separately licensed subtree | Do not import the application or compositor into the MPL-2.0 AromaFG library |
@@ -73,6 +76,12 @@ The revisions below are immutable review anchors checked for this report. Re-che
 | RAFT / GMFlow-class learned flow | Strong offline reference for difficult motion and quality ceiling | Model memory, all-pairs/correlation or transformer compute, training framework and deployment complexity; not an assumed mobile realtime fit | Offline quality oracle / research only |
 | RIFE / IFRNet / other learned VFI | Jointly learns motion representation and synthesis; can improve difficult interpolation artifacts | Model latency, activation memory, thermal cost, operator support and checkpoint rights; may require an independent Vulkan device/runtime | Optional later refinement, not baseline |
 
+### Device-proven sibling reference: Win-FG Native
+
+The reviewed Win-FG README reports Adreno 750 native-mode results of 45→90 FPS at a 45 FPS cap and 58→115 FPS uncapped, with a reported 6.6 ms/frame GPU cost. Its provenance document describes FSR3-family block-SAD optical flow, bidirectional flow, C1 inverse-compositional affine Lucas–Kanade, C2 TV-L1 regularization, and first-principles synthesis/anti-ghost components. It also explains why native host/compositor integration is preferable to the layer path in its Bannerlator setup: generated layer presents were discarded by the host compositor. These are upstream, project-specific results and design notes, not AromaFG validation.
+
+The same Win-FG research record reports that its tested 112K-parameter IFNet-lite neural path on Adreno 750 via ncnn-Vulkan FP16 took 16 ms at 256p, 35 ms at 360p and 117 ms at 720p, against a stated 2–4 ms budget; it also identifies a `GridSample` Vulkan support gap that caused CPU fallback. This is strong evidence against full-frame neural synthesis as the first mobile MVP. A tiny convolution-only residual without warping is a future hypothesis, not a selected feature.
+
 ### DIS reference evidence
 
 The DIS paper describes three core elements: inverse patch search, dense displacement aggregation across scales, and variational refinement. Its authors report high CPU throughput in their paper; those paper numbers are not transferable to an Adreno GPU.
@@ -83,13 +92,11 @@ WFG's hybrid in that commit uses Farneback at coarser levels, DIS patch search a
 
 ### Selected algorithm experiment order
 
-1. Keep the existing AromaFG block matcher as the control.
-2. Implement a minimal DIS-like coarse-to-fine GPU estimator independently, initially at reduced flow resolution.
-3. Add forward/backward consistency and confidence gates; evaluate on occlusion/disocclusion cases.
-4. Compare DIS-only against a Farneback-coarse + DIS-fine hybrid.
-5. Only after these comparisons, decide whether the runtime branch should replace or supplement block matching.
-6. Evaluate C1 affine Lucas–Kanade as a separate feature flag. Do not combine C1/C2 changes into the first DIS A/B test.
-7. Evaluate TV-L1/C2 and advanced anti-ghost as separate experiments after flow accuracy and runtime are stable.
+1. Keep the current AromaFG block matcher as the control.
+2. Compare its quality/cost with the Win-FG FSR3-family SAD/block-search design, especially the one-flow-per-pair architecture and bidirectional/consistency behavior. Treat any code reuse as a separate permission and provenance decision.
+3. Independently prototype a minimal DIS-like coarse-to-fine GPU estimator at reduced flow resolution; compare DIS-only against a Farneback-coarse + DIS-fine hybrid.
+4. Add/compare C1 affine Lucas–Kanade, C2 TV-L1 and anti-ghost as independently switchable experiments, not one bundled change.
+5. Decide based on the target device's high-FPS ground truth, GPU p95/p99, memory and thermal results; do not select an algorithm from upstream FPS claims alone.
 
 ## 5. Mobile inference runtime evaluation
 
@@ -101,7 +108,7 @@ WFG's hybrid in that commit uses Farneback at coarser levels, DIS patch search a
 | Qualcomm QNN / AI Engine Direct | Hardware-accelerated Qualcomm path; ONNX Runtime documentation reports QNN EP tested with QNN 2.22.x and SM8350 among tested platforms | Proprietary SDK, chipset/backend support, device-specific deployment and operator constraints; target device SoC not yet verified | Conditional option for confirmed supported Qualcomm hardware |
 | Direct Vulkan compute | Host-owned Vulkan context and explicit synchronization fit AromaFG's architectural contract | Neural operators, weights, memory and execution graph become AromaFG's maintenance burden | Preferred for classical flow; do not build a neural runtime from scratch in Phase 2 |
 
-No runtime is selected as a required dependency. Before choosing one, prove:
+No runtime is selected as a required dependency. The Win-FG on-device measurements above make full-frame neural VFI a rejected first-MVP direction. A conv-only residual may be revisited only after the classical path is measured and a real target device proves it fits. Before choosing a runtime, prove:
 - it can consume the host's existing Vulkan device/context or explicitly document a safe separate-device path;
 - no hidden queue submission, device-wide wait or full-frame CPU copy occurs;
 - all tensors can remain GPU-resident from input to output;
@@ -178,7 +185,7 @@ These are proposed engineering gates for discussion and tuning. They are not mea
 
 - [x] Candidate repositories and review revisions recorded.
 - [x] Source-code license matrix started with explicit subtree boundaries.
-- [x] Classical optical-flow methods compared and DIS selected as the first A/B candidate.
+- [x] Classical optical-flow methods compared; Win-FG SAD/block search and WFG DIS hybrid selected as the first two A/B references.
 - [x] Mobile inference runtimes compared; no mandatory dependency selected.
 - [x] Dataset roles, high-FPS ground-truth capture protocol and metrics defined.
 - [x] MVP budgets proposed and explicitly labeled as unmeasured targets.
@@ -190,6 +197,7 @@ These are proposed engineering gates for discussion and tuning. They are not mea
 ## 10. Sources
 
 - DIS paper: https://arxiv.org/abs/1603.03590
+- Win-FG Native and provenance: https://github.com/Snap888/win-fg/tree/fbc69ed6c5bf16b824d0a29bd8b171675101f9dd
 - WFG MIT subtree and implementation: https://github.com/WinNative-Emu/WinNative/tree/239ab0ea8ee3b1cdb03e5b09aaf8e4c60228f739/app/src/main/cpp/wfg
 - WinNative credits and license boundaries: https://winnative-emu.github.io/WinNative/CREDITS.html
 - Practical-RIFE source and model notes: https://github.com/hzwer/Practical-RIFE/tree/bbfd2ea90910789a860ea3e2b32a240cd577b75e
