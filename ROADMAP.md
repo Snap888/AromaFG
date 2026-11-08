@@ -29,16 +29,22 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] Establish benchmark dataset roles, high-FPS ground-truth protocol and quality metrics.
 - [x] Select Win-FG SAD/block-search and WFG DIS/Farneback hybrid as A/B references; retain block matching as control and define proposed MVP budgets.
 - [ ] Complete exact checkpoint/dataset rights review before any such artifact is imported or redistributed.
-- [ ] Review and approve Phase 2 research PR.
+- [ ] Review and approve Phase 2 research PR #5.
 
 ## Phase 3 — API and host lifecycle hardening
 
-- [ ] Define explicit record/submit/commit/cancel semantics for host command buffers.
-- [ ] Make frame retry behavior correct for BUSY and backend errors.
-- [ ] Define GPU object lifetime, slot fence ownership and resize/quiescence requirements in ABI.
-- [ ] Validate formats, sampler filtering features, image usage and enabled device features.
-- [ ] Define output format conversion/fallback policy.
-- [ ] Add tests for command-buffer abandonment, failed recording and slot reuse.
+- [x] Add explicit backend record/submit-commit/cancel callbacks and public frame transaction API.
+- [x] Advance frame order only on successful commit; preserve frame ID on cancelled/failed recording.
+- [x] Block concurrent process/config mutation while a recording transaction is pending.
+- [x] Separate Vulkan slot recording state from submitted timestamp state.
+- [x] Make timing collection an explicit post-fence operation; require host fence before slot reuse.
+- [x] Validate source linear-filter feature support as well as sampled-image support.
+- [x] Reset temporal history on scene cuts and frame-ID gaps.
+- [x] Document callback payload vs GPU object lifetime, queue order and cancellation preconditions.
+- [ ] Add CI evidence for the transaction API and full Vulkan graph on lavapipe.
+- [ ] Add command-buffer-abandonment and slot-reuse integration tests.
+- [ ] Review/approve Phase 3 PR; test on a real Vulkan host and target Adreno/Turnip devices.
+- [ ] Define robust device-loss recovery and a complete output format conversion/fallback policy.
 
 ## Phase 4 — lightweight Frame Generation MVP
 
@@ -78,7 +84,7 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [ ] C2 edge-preserving flow regularization.
 - [ ] Occlusion-aware candidate reconstruction and anti-ghost fallback.
 - [ ] HUD handling, color-space correctness and optional sharpening.
-- [ ] Calibrate confidence/risk metrics against high-FPS ground truth.
+- [ ] Calibrate confidence/risk metrics against true high-frame-rate ground truth.
 
 ## Phase 9 — pacing and latency
 
