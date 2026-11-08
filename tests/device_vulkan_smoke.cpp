@@ -218,11 +218,20 @@ int main() {
  host_read.srcQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;host_read.dstQueueFamilyIndex=VK_QUEUE_FAMILY_IGNORED;
  host_read.buffer=readback;host_read.offset=0;host_read.size=VK_WHOLE_SIZE;
  vkCmdPipelineBarrier(cmd,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_HOST_BIT,0,0,nullptr,1,&host_read,0,nullptr);
- if(vkEndCommandBuffer(cmd)!=VK_SUCCESS)return 22;
+ if(vkEndCommandBuffer(cmd)!=VK_SUCCESS) {
+  vkResetCommandPool(dev,pool,0);
+  aroma_fg_cancel_frame(engine,input.frame_id);
+  return 22;
+ }
  VkFenceCreateInfo fci{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};VkFence fence=VK_NULL_HANDLE;
  if(vkCreateFence(dev,&fci,nullptr,&fence)!=VK_SUCCESS)return 23;
  VkSubmitInfo submit{VK_STRUCTURE_TYPE_SUBMIT_INFO};submit.commandBufferCount=1;submit.pCommandBuffers=&cmd;
- if(vkQueueSubmit(queue,1,&submit,fence)!=VK_SUCCESS)return 24;
+ if(vkQueueSubmit(queue,1,&submit,fence)!=VK_SUCCESS) {
+  vkResetCommandPool(dev,pool,0);
+  aroma_fg_cancel_frame(engine,input.frame_id);
+  return 24;
+ }
+ if(aroma_fg_commit_frame(engine,input.frame_id)!=AROMA_FG_OK)return 29;
  VkResult wait=vkWaitForFences(dev,1,&fence,VK_TRUE,UINT64_MAX);
  if(wait!=VK_SUCCESS)return 25;
  AromaFGVulkanTimingV1 timing{};timing.struct_size=sizeof(timing);timing.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;
