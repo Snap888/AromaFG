@@ -33,6 +33,8 @@ int main() {
  assert(levels[3].width==240 && levels[3].height==135);
  assert(make_pyramid(0,100,4).empty());
  assert(make_pyramid(100,100,0).empty());
+ const auto max_extent=make_pyramid(UINT32_MAX,1,2,1);
+ assert(max_extent.size()==2 && max_extent[1].width==2147483648u);
  for(uint32_t m=2;m<=4;++m) {
    const auto graph=make_flow_schedule(3,m);
    assert(!graph.empty());
@@ -54,5 +56,6 @@ int main() {
  assert(make_flow_schedule(0,2).empty());
  assert(make_flow_schedule(3,1).empty());
  assert(make_flow_schedule(3,5).empty());
+ assert(make_flow_schedule(33,2).empty());
  return 0;
 }
