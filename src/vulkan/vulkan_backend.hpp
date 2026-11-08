@@ -1,6 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <cstdint>
+#include <cstddef>
 #include <vector>
 namespace aromafg::vk {
 struct BorrowedContext { VkInstance instance=VK_NULL_HANDLE; VkPhysicalDevice physical_device=VK_NULL_HANDLE; VkDevice device=VK_NULL_HANDLE; VkQueue queue=VK_NULL_HANDLE; uint32_t queue_family_index=0; };
