@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, "feature/**"]
   pull_request:
-    branches: [main]
+    branches: [main, "feature/**"]
   workflow_dispatch:
 
 jobs:
@@ -15,7 +15,7 @@ jobs:
       - name: Install build and shader tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ glslang-tools spirv-tools
+          sudo apt-get install -y cmake ninja-build g++ libvulkan-dev glslang-tools spirv-tools
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAROMA_FG_BUILD_TESTS=ON -DAROMA_FG_COMPILE_SHADERS=ON
       - name: Build library, tests and SPIR-V
