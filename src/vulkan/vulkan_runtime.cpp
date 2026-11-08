@@ -779,7 +779,8 @@ void backend_shutdown(void* user) { delete static_cast<BackendState*>(user); }
 
 extern "C" int aroma_fg_vulkan_validate_context(const AromaFGVulkanContextV2* c) {
     if (!c || c->struct_size < sizeof(*c) ||
-        c->api_version != AROMA_FG_VULKAN_INTEROP_VERSION) return 0;
+        c->api_version != AROMA_FG_VULKAN_INTEROP_VERSION ||
+        c->enabled_features.shaderStorageImageExtendedFormats != VK_TRUE) return 0;
     return aromafg::vk::validate_context({c->instance,c->physical_device,c->device,c->queue,c->queue_family_index}) ? 1 : 0;
 }
 
