@@ -48,6 +48,7 @@ Planned quality experiments: global-motion pre-warp (C1), edge-preserving flow r
 - [Algorithm decisions](docs/algorithm-decisions.md)
 - [Host/Vulkan ownership contract](docs/vulkan-host-contract.md)
 - [Vulkan backend milestone](docs/vulkan-backend.md)
+- [Adreno + Turnip device test plan](docs/adreno-turnip-test-plan.md)
 - [bionic-vulkan-wrapper analysis](docs/analysis-bionic-vulkan-wrapper.md)
 - [Integration guide](docs/integration.md)
 - [Engineer mode and telemetry](docs/engineer-mode.md)
