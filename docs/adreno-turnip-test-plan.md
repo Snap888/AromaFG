@@ -1,7 +1,7 @@
 # Adreno + Mesa Turnip device test plan
 
 ## Status
-Hosted CI run #114 passed the complete device smoke graph on Mesa lavapipe with Khronos Synchronization Validation enabled and zero validation errors. This is a software Vulkan result only. No physical Adreno/Turnip or Qualcomm proprietary driver test has been performed for this milestone. The current Vulkan code provides host-handle validation, cache/descriptor helpers, barriers and a CPU dispatch planner; it does not yet record the complete Frame Generation graph. Run this plan only after the full dispatch backend is implemented.
+Hosted CI run #120 passed the complete ×4 device smoke graph on Mesa lavapipe with Khronos Synchronization Validation enabled and zero validation errors. It verified all three output phases by readback (RGB approximately 64/76/89, 102/102/102, 140/128/115). This is a software Vulkan result only. No physical Adreno/Turnip or Qualcomm proprietary driver test has been performed for this milestone. The current Vulkan code provides host-handle validation, cache/descriptor helpers, barriers and a CPU dispatch planner; it does not yet record the complete Frame Generation graph. Run this plan only after the full dispatch backend is implemented.
 
 ## Required test report
 Record at minimum:
