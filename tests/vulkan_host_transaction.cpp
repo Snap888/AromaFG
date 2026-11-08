@@ -71,7 +71,8 @@ int main() {
     VkBuffer buffer=VK_NULL_HANDLE;
     if(vkCreateBuffer(device,&bci,nullptr,&buffer)!=VK_SUCCESS) return 14;
     VkMemoryRequirements mr{}; vkGetBufferMemoryRequirements(device,buffer,&mr);
-    const uint32_t mt=find_memory(physical,mr.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    uint32_t mt=find_memory(physical,mr.memoryTypeBits,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if(mt==UINT32_MAX) mt=find_memory(physical,mr.memoryTypeBits,0);
     if(mt==UINT32_MAX) return 15;
     VkMemoryAllocateInfo mai{VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     mai.allocationSize=mr.size; mai.memoryTypeIndex=mt;
