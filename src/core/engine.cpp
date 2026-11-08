@@ -121,8 +121,12 @@ extern "C" AromaFGStatus aroma_fg_process(
         (output_size < sizeof(*out) ? output_size : sizeof(*out)) - sizeof(uint32_t));
     if (in->frame_id <= e->last_frame_id && e->last_frame_id)
         return AROMA_FG_ERROR_FRAME_ORDER;
-    if (in->scene_cut && e->backend.reset_history)
-        e->backend.reset_history(e->backend.user_data, 2u);
+    if (e->backend.reset_history) {
+        if (in->scene_cut)
+            e->backend.reset_history(e->backend.user_data, 2u);
+        else if (e->last_frame_id && in->frame_id != e->last_frame_id + 1u)
+            e->backend.reset_history(e->backend.user_data, 3u);
+    }
 
     if (!c.enabled || c.multiplier == 1) {
         e->last_frame_id = in->frame_id;
@@ -135,6 +139,7 @@ extern "C" AromaFGStatus aroma_fg_process(
         // cancel the command buffer before the backend can safely recycle state.
         e->pending_frame_id = in->frame_id;
         e->pending_transaction = true;
+        e->pending_can_commit = false;
     }
     const auto status = e->backend.process_frame(e->backend.user_data, in, out);
     if (status != AROMA_FG_OK) return status;
@@ -143,6 +148,8 @@ extern "C" AromaFGStatus aroma_fg_process(
 
     if (!e->transactional_backend)
         e->last_frame_id = in->frame_id;
+    else
+        e->pending_can_commit = true;
     return AROMA_FG_OK;
 }
 
@@ -153,11 +160,13 @@ extern "C" AromaFGStatus aroma_fg_commit_frame(AromaFGEngine* e, uint64_t frame_
     if (!e->transactional_backend) return AROMA_FG_ERROR_UNSUPPORTED;
     if (!e->pending_transaction || e->pending_frame_id != frame_id)
         return AROMA_FG_ERROR_FRAME_ORDER;
+    if (!e->pending_can_commit) return AROMA_FG_ERROR_BACKEND;
     const AromaFGStatus status = e->backend.commit_frame(e->backend.user_data, frame_id);
     if (status != AROMA_FG_OK) return status;
     e->last_frame_id = frame_id;
     e->pending_frame_id = 0;
     e->pending_transaction = false;
+    e->pending_can_commit = false;
     return AROMA_FG_OK;
 }
 
@@ -172,6 +181,7 @@ extern "C" AromaFGStatus aroma_fg_cancel_frame(AromaFGEngine* e, uint64_t frame_
     if (status != AROMA_FG_OK) return status;
     e->pending_frame_id = 0;
     e->pending_transaction = false;
+    e->pending_can_commit = false;
     return AROMA_FG_OK;
 }
 
