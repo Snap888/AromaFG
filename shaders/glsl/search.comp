@@ -35,14 +35,18 @@ void main() {
     for (int oy=-radius; oy<=radius; oy+=stepSize) {
         for (int ox=-radius; ox<=radius; ox+=stepSize) {
             ivec2 candidate = seed + ivec2(ox,oy);
-            float cost = patchCost(p, p + candidate, size);
+            ivec2 target = p + candidate;
+            if (any(lessThan(target, ivec2(0))) || any(greaterThanEqual(target, size))) continue;
+            float cost = patchCost(p, target, size);
             if (cost < best) { second=best; best=cost; bestVector=candidate; }
             else if (cost < second) second=cost;
         }
     }
-    float separation = clamp((second-best)/max(second,1.0e-4),0.0,1.0);
-    float boundaryPenalty = (abs(bestVector.x-seed.x)>=radius ||
-                             abs(bestVector.y-seed.y)>=radius) ? 0.65 : 1.0;
+    float separation = second < 1.0e19
+        ? clamp((second-best)/max(second,1.0e-4),0.0,1.0) : 0.0;
+    float boundaryPenalty = radius > 0 &&
+        (abs(bestVector.x-seed.x)>=radius || abs(bestVector.y-seed.y)>=radius)
+        ? 0.65 : 1.0;
     imageStore(outputFlow,p,vec4(vec2(bestVector),0.0,0.0));
     imageStore(outputConfidence,p,vec4(separation*boundaryPenalty,0.0,0.0,1.0));
 }
