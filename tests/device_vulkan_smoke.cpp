@@ -6,8 +6,21 @@
 #include <cstring>
 #include <vector>
 #include <cmath>
+#include <string>
 
 namespace {
+uint32_t validation_errors = 0;
+VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+ VkDebugUtilsMessageTypeFlagsEXT, const VkDebugUtilsMessengerCallbackDataEXT* data, void*) {
+ if (severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) ++validation_errors;
+ if (severity & (VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
+  std::fprintf(stderr,"VULKAN_VALIDATION: %s\\n",data&&data->pMessage?data->pMessage:"(no message)");
+ return VK_FALSE;
+}
+bool has_extension(const std::vector<VkExtensionProperties>& xs,const char* name) {
+ for(const auto& x:xs)if(std::strcmp(x.extensionName,name)==0)return true;
+ return false;
+}
 struct TestImage { VkImage image=VK_NULL_HANDLE; VkDeviceMemory memory=VK_NULL_HANDLE; VkImageView view=VK_NULL_HANDLE; };
 uint32_t memory_type(VkPhysicalDevice phys,uint32_t bits,VkMemoryPropertyFlags flags) {
  VkPhysicalDeviceMemoryProperties p{};vkGetPhysicalDeviceMemoryProperties(phys,&p);
@@ -62,8 +75,45 @@ int main() {
  VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};app.pApplicationName="AromaFG device smoke";
  app.apiVersion=VK_API_VERSION_1_1;
  VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};ici.pApplicationInfo=&app;
+ uint32_t layer_count=0;vkEnumerateInstanceLayerProperties(&layer_count,nullptr);
+ std::vector<VkLayerProperties> layers(layer_count);vkEnumerateInstanceLayerProperties(&layer_count,layers.data());
+ bool validation_layer=false;for(const auto& l:layers)if(std::strcmp(l.layerName,"VK_LAYER_KHRONOS_validation")==0)validation_layer=true;
+ std::vector<const char*> enabled_layers;
+ if(validation_layer)enabled_layers.push_back("VK_LAYER_KHRONOS_validation");
+ uint32_t ext_count=0;vkEnumerateInstanceExtensionProperties(nullptr,&ext_count,nullptr);
+ std::vector<VkExtensionProperties> extensions(ext_count);vkEnumerateInstanceExtensionProperties(nullptr,&ext_count,extensions.data());
+ std::vector<const char*> enabled_extensions;
+ bool debug_utils=has_extension(extensions,VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+ bool sync_validation=false;
+ std::vector<VkExtensionProperties> layer_extensions;
+ if(validation_layer) {
+  uint32_t n=0;vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation",&n,nullptr);
+  layer_extensions.resize(n);vkEnumerateInstanceExtensionProperties("VK_LAYER_KHRONOS_validation",&n,layer_extensions.data());
+  sync_validation=has_extension(layer_extensions,VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
+  if(!debug_utils)debug_utils=has_extension(layer_extensions,VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+ }
+ if(debug_utils)enabled_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+ if(sync_validation)enabled_extensions.push_back(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
+ VkDebugUtilsMessengerCreateInfoEXT debug_info{VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+ debug_info.messageSeverity=VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+ debug_info.messageType=VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT|VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+ debug_info.pfnUserCallback=debug_callback;
+ VkValidationFeatureEnableEXT enabled_validation=VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT;
+ VkValidationFeaturesEXT validation_features{VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT};
+ validation_features.enabledValidationFeatureCount=1;validation_features.pEnabledValidationFeatures=&enabled_validation;
+ if(debug_utils)validation_features.pNext=&debug_info;
+ if(validation_layer){ici.enabledLayerCount=static_cast<uint32_t>(enabled_layers.size());ici.ppEnabledLayerNames=enabled_layers.data();}
+ ici.enabledExtensionCount=static_cast<uint32_t>(enabled_extensions.size());ici.ppEnabledExtensionNames=enabled_extensions.data();
+ if(sync_validation)ici.pNext=&validation_features;else if(debug_utils)ici.pNext=&debug_info;
+ std::printf("VALIDATION_LAYER=%s SYNC_VALIDATION=%s DEBUG_UTILS=%s\\n",
+  validation_layer?"on":"off",sync_validation?"on":"off",debug_utils?"on":"off");
  VkInstance instance=VK_NULL_HANDLE;
  if(vkCreateInstance(&ici,nullptr,&instance)!=VK_SUCCESS)return 10;
+ VkDebugUtilsMessengerEXT messenger=VK_NULL_HANDLE;
+ if(debug_utils) {
+  auto create_debug=reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance,"vkCreateDebugUtilsMessengerEXT"));
+  if(create_debug)create_debug(instance,&debug_info,nullptr,&messenger);
+ }
  uint32_t count=0;vkEnumeratePhysicalDevices(instance,&count,nullptr);
  if(!count){vkDestroyInstance(instance,nullptr);return 11;}
  std::vector<VkPhysicalDevice> devices(count);vkEnumeratePhysicalDevices(instance,&count,devices.data());
@@ -180,6 +230,12 @@ int main() {
  vkDestroyFence(dev,fence,nullptr);
  vkDestroyBuffer(dev,readback,nullptr);vkFreeMemory(dev,readback_mem,nullptr);
  destroy_image(dev,prev);destroy_image(dev,curr);destroy_image(dev,out);
- vkDestroyCommandPool(dev,pool,nullptr);vkDestroyDevice(dev,nullptr);vkDestroyInstance(instance,nullptr);
- return pixel_ok?0:27;
+ vkDestroyCommandPool(dev,pool,nullptr);vkDestroyDevice(dev,nullptr);
+ if(messenger) {
+  auto destroy_debug=reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance,"vkDestroyDebugUtilsMessengerEXT"));
+  if(destroy_debug)destroy_debug(instance,messenger,nullptr);
+ }
+ vkDestroyInstance(instance,nullptr);
+ if(validation_errors)std::printf("VALIDATION_ERRORS=%u\\n",validation_errors);
+ return (pixel_ok&&validation_errors==0)?0:27;
 }
