@@ -212,7 +212,7 @@ public:
             const PushSynthesis push{frame.extent.width, frame.extent.height,
                 static_cast<float>(i + 1u) / static_cast<float>(config_.multiplier), 0.025f};
             bind_dispatch(cmd, synthesis, set, &push, sizeof(push), frame.extent);
-            barrier(cmd, frame.output_images[i], VK_ACCESS_SHADER_WRITE_BIT,
+            image_barrier(cmd, frame.output_images[i], VK_ACCESS_SHADER_WRITE_BIT,
                     frame.output_access, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                     nonzero_stage(frame.output_stage), VK_IMAGE_LAYOUT_GENERAL,
                     frame.output_restore_layouts[i]);
@@ -764,6 +764,8 @@ extern "C" int aroma_fg_vulkan_validate_frame(const AromaFGVulkanFrameV2* f, uin
         !f->previous_view || !f->current_view ||
         f->previous_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
         f->current_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
+        f->previous_restore_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
+        f->current_restore_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
         !f->extent.width || !f->extent.height ||
         outputs > f->output_capacity || outputs > AROMA_FG_MAX_MULTIPLIER - 1u ||
         f->output_format == VK_FORMAT_UNDEFINED ||
