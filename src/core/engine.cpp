@@ -1,5 +1,6 @@
 #include "engine.hpp"
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <new>
 
@@ -12,9 +13,15 @@ bool valid_config(const AromaFGConfig* c) {
         && c->quality <= AROMA_FG_QUALITY_ULTRA
         && c->flow_scale_percent >= 25 && c->flow_scale_percent <= 100;
 }
+constexpr size_t legacy_backend_size = offsetof(AromaFGBackendV1, commit_frame);
 bool valid_backend(const AromaFGBackendV1* b) {
-    return b && b->struct_size >= sizeof(AromaFGBackendV1)
-        && b->api_version == AROMA_FG_API_VERSION && b->process_frame;
+    if (!b || b->struct_size < legacy_backend_size ||
+        b->api_version != AROMA_FG_API_VERSION || !b->process_frame) return false;
+    if (b->struct_size > legacy_backend_size && b->struct_size < sizeof(AromaFGBackendV1))
+        return false;
+    const bool has_commit = b->struct_size >= sizeof(AromaFGBackendV1) && b->commit_frame;
+    const bool has_cancel = b->struct_size >= sizeof(AromaFGBackendV1) && b->cancel_frame;
+    return has_commit == has_cancel;
 }
 struct BusyGuard {
     std::atomic_flag& flag;
@@ -47,7 +54,9 @@ extern "C" AromaFGEngine* aroma_fg_create(
     auto* e = new (std::nothrow) AromaFGEngine();
     if (!e) return nullptr;
     e->config = c;
-    e->backend = *backend;
+    std::memcpy(&e->backend, backend,
+        backend->struct_size < sizeof(e->backend) ? backend->struct_size : sizeof(e->backend));
+    e->transactional_backend = e->backend.commit_frame && e->backend.cancel_frame;
     if (e->backend.initialize &&
         e->backend.initialize(e->backend.user_data, &e->config) != AROMA_FG_OK) {
         if (e->backend.shutdown) e->backend.shutdown(e->backend.user_data);
@@ -74,6 +83,7 @@ extern "C" AromaFGStatus aroma_fg_set_config(
     if (e->processing.test_and_set(std::memory_order_acquire))
         return AROMA_FG_ERROR_BUSY;
     BusyGuard guard{e->processing};
+    if (e->pending_transaction) return AROMA_FG_ERROR_BUSY;
     std::lock_guard<std::mutex> lock(e->config_mutex);
     if (e->backend.update_config) {
         const auto status = e->backend.update_config(e->backend.user_data, c);
@@ -99,6 +109,8 @@ extern "C" AromaFGStatus aroma_fg_process(
     if (e->processing.test_and_set(std::memory_order_acquire))
         return AROMA_FG_ERROR_BUSY;
     BusyGuard guard{e->processing};
+    if (e->pending_transaction) return AROMA_FG_ERROR_BUSY;
+
     AromaFGConfig c{};
     {
         std::lock_guard<std::mutex> lock(e->config_mutex);
@@ -109,16 +121,67 @@ extern "C" AromaFGStatus aroma_fg_process(
         (output_size < sizeof(*out) ? output_size : sizeof(*out)) - sizeof(uint32_t));
     if (in->frame_id <= e->last_frame_id && e->last_frame_id)
         return AROMA_FG_ERROR_FRAME_ORDER;
-    if (in->scene_cut && e->backend.reset_history)
-        e->backend.reset_history(e->backend.user_data, 2u);
-    e->last_frame_id = in->frame_id;
-    if (!c.enabled || c.multiplier == 1)
+    if (e->backend.reset_history) {
+        if (in->scene_cut)
+            e->backend.reset_history(e->backend.user_data, 2u);
+        else if (e->last_frame_id && in->frame_id != e->last_frame_id + 1u)
+            e->backend.reset_history(e->backend.user_data, 3u);
+    }
+
+    if (!c.enabled || c.multiplier == 1) {
+        e->last_frame_id = in->frame_id;
         return AROMA_FG_BYPASSED;
+    }
+
     out->struct_size = sizeof(*out);
+    if (e->transactional_backend) {
+        // Keep the transaction pending even when recording fails: the host must
+        // cancel the command buffer before the backend can safely recycle state.
+        e->pending_frame_id = in->frame_id;
+        e->pending_transaction = true;
+        e->pending_can_commit = false;
+    }
     const auto status = e->backend.process_frame(e->backend.user_data, in, out);
     if (status != AROMA_FG_OK) return status;
     if (!valid_output(*out, c.multiplier - 1u))
         return AROMA_FG_ERROR_BACKEND;
+
+    if (!e->transactional_backend)
+        e->last_frame_id = in->frame_id;
+    else
+        e->pending_can_commit = true;
+    return AROMA_FG_OK;
+}
+
+extern "C" AromaFGStatus aroma_fg_commit_frame(AromaFGEngine* e, uint64_t frame_id) {
+    if (!e || !frame_id) return AROMA_FG_ERROR_INVALID_ARGUMENT;
+    if (e->processing.test_and_set(std::memory_order_acquire)) return AROMA_FG_ERROR_BUSY;
+    BusyGuard guard{e->processing};
+    if (!e->transactional_backend) return AROMA_FG_ERROR_UNSUPPORTED;
+    if (!e->pending_transaction || e->pending_frame_id != frame_id)
+        return AROMA_FG_ERROR_FRAME_ORDER;
+    if (!e->pending_can_commit) return AROMA_FG_ERROR_BACKEND;
+    const AromaFGStatus status = e->backend.commit_frame(e->backend.user_data, frame_id);
+    if (status != AROMA_FG_OK) return status;
+    e->last_frame_id = frame_id;
+    e->pending_frame_id = 0;
+    e->pending_transaction = false;
+    e->pending_can_commit = false;
+    return AROMA_FG_OK;
+}
+
+extern "C" AromaFGStatus aroma_fg_cancel_frame(AromaFGEngine* e, uint64_t frame_id) {
+    if (!e || !frame_id) return AROMA_FG_ERROR_INVALID_ARGUMENT;
+    if (e->processing.test_and_set(std::memory_order_acquire)) return AROMA_FG_ERROR_BUSY;
+    BusyGuard guard{e->processing};
+    if (!e->transactional_backend) return AROMA_FG_ERROR_UNSUPPORTED;
+    if (!e->pending_transaction || e->pending_frame_id != frame_id)
+        return AROMA_FG_ERROR_FRAME_ORDER;
+    const AromaFGStatus status = e->backend.cancel_frame(e->backend.user_data, frame_id);
+    if (status != AROMA_FG_OK) return status;
+    e->pending_frame_id = 0;
+    e->pending_transaction = false;
+    e->pending_can_commit = false;
     return AROMA_FG_OK;
 }
 

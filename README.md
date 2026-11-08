@@ -35,11 +35,13 @@ The Vulkan runtime branch currently supports RGBA8_UNORM and RGBA16_SFLOAT outpu
 
 1. Estimate motion once per consecutive source-frame pair; reuse it for each generated phase.
 2. Keep capture, command submission, synchronization, swapchain acquisition and presentation owned by the host.
-3. Borrowed Vulkan handles must remain alive until recorded commands complete; callback payload lifetime and GPU resource lifetime are distinct.
-4. Bypass safely on invalid input, unsupported format/capability, scene discontinuity or backend failure.
-5. Separate compute completion, swapchain acquisition, successful present and physical scanout in metrics.
-6. Treat confidence/risk as measured proxies until calibrated against true high-frame-rate ground truth.
-7. Classical optical flow and warping remain the default; learned refinement is optional research only.
+3. A successful Vulkan `aroma_fg_process()` means commands were recorded, not submitted. The host must call `aroma_fg_commit_frame()` after successful queue submission, or abandon/reset the command buffer and call `aroma_fg_cancel_frame()`.
+4. Frame IDs advance only on transaction commit; cancelled recordings may be retried with the same ID.
+5. Borrowed Vulkan handles must remain alive until recorded commands complete; callback payload lifetime and GPU resource lifetime are distinct.
+6. Bypass safely on invalid input, unsupported format/capability, scene discontinuity or backend failure.
+7. Separate compute completion, swapchain acquisition, successful present and physical scanout in metrics.
+8. Treat confidence/risk as measured proxies until calibrated against true high-frame-rate ground truth.
+9. Classical optical flow and warping remain the default; learned refinement is optional research only.
 
 ## Baseline quality pipeline
 
@@ -69,6 +71,9 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - [Roadmap](ROADMAP.md)
 - [Phase 1 documentation baseline](docs/phase-1-status.md)
 - [Phase 2 technology research](docs/phase-2-research.md)
+- [Phase 3 lifecycle hardening status](docs/phase-3-status.md)
+- [Phase 3.1 host validation status](docs/phase-3-1-status.md)
+- [Vulkan host transaction contract](docs/vulkan-host-contract.md)
 
 ## Build and test
 

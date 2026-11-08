@@ -21,8 +21,11 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAROMA_FG_BUILD_TESTS=ON -DAROMA_FG_COMPILE_SHADERS=ON -DAROMA_FG_BUILD_DEVICE_TESTS=ON
       - name: Build library, tests and SPIR-V
         run: cmake --build build --parallel
-      - name: Run contract tests
-        run: ctest --test-dir build --output-on-failure
+      - name: Run contract and host lifecycle tests on Mesa lavapipe
+        run: |
+          ICD="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)"
+          test -n "$ICD"
+          VK_ICD_FILENAMES="$ICD" ctest --test-dir build --output-on-failure
       - name: Run full Vulkan graph on Mesa lavapipe with synchronization validation
         run: |
           ICD="$(find /usr/share/vulkan/icd.d -name 'lvp_icd*.json' -print -quit)"

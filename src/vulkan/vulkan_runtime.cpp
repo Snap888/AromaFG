@@ -34,8 +34,11 @@ struct Pipeline {
 struct Slot {
     VkDescriptorPool descriptors = VK_NULL_HANDLE;
     VkQueryPool timestamps = VK_NULL_HANDLE;
+    bool recording = false;
     bool has_timestamps = false;
+    uint64_t recorded_frame = 0;
     uint64_t completed_frame = 0;
+    bool resources_initialized_before_record = false;
 };
 
 struct Resources {
@@ -159,19 +162,25 @@ public:
             (frame.output_format != VK_FORMAT_R8G8B8A8_UNORM &&
              frame.output_format != VK_FORMAT_R16G16B16A16_SFLOAT))
             return AROMA_FG_ERROR_INVALID_ARGUMENT;
-        if (!format_support(frame.source_format, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) ||
+        const VkFormatFeatureFlags sampled_linear =
+            VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+        if (!format_support(frame.source_format, sampled_linear) ||
             !format_support(frame.output_format, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
             return AROMA_FG_ERROR_UNSUPPORTED;
         if (!workgroup_extent_supported(frame.extent)) return AROMA_FG_ERROR_UNSUPPORTED;
 
         Slot& slot = slots_data_[frame.frame_slot];
-        read_timing(slot, output);
-        if (slot.has_timestamps) return AROMA_FG_ERROR_BUSY;
+        if (slot.recording || slot.has_timestamps) return AROMA_FG_ERROR_BUSY;
         if (!ensure_resources(frame.extent, (frame.flags & AROMA_FG_VULKAN_FRAME_HOST_QUIESCENT) != 0))
             return AROMA_FG_ERROR_BUSY;
         if (vkResetDescriptorPool(context_.device, slot.descriptors, 0) != VK_SUCCESS)
             return AROMA_FG_ERROR_BACKEND;
 
+        // From this point the command buffer may contain partial AromaFG work.
+        // The host must call cancel_frame only after abandoning/resetting it.
+        slot.recording = true;
+        slot.recorded_frame = input.frame_id;
+        slot.resources_initialized_before_record = resources_.initialized;
         VkCommandBuffer cmd = frame.command_buffer;
         if (config_.profiling_enabled && slot.timestamps)
             vkCmdResetQueryPool(cmd, slot.timestamps, 0, 6);
@@ -236,13 +245,45 @@ public:
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, frame.current_restore_layout);
         if (config_.profiling_enabled && slot.timestamps)
             vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, slot.timestamps, 5);
-        slot.has_timestamps = config_.profiling_enabled && slot.timestamps;
-        slot.completed_frame = input.frame_id;
         output.generated_frames = required;
         return AROMA_FG_OK;
     }
 
     VkResult export_cache(std::vector<uint8_t>& out) const { return cache_.export_data(out); }
+
+    AromaFGStatus commit(uint64_t frame_id) {
+        for (auto& slot : slots_data_) {
+            if (!slot.recording || slot.recorded_frame != frame_id) continue;
+            slot.recording = false;
+            slot.completed_frame = frame_id;
+            slot.has_timestamps = config_.profiling_enabled && slot.timestamps;
+            slot.recorded_frame = 0;
+            slot.resources_initialized_before_record = false;
+            return AROMA_FG_OK;
+        }
+        // The core may request cancellation/commit after validation failed before
+        // any command was recorded. A commit in that state is not valid.
+        return AROMA_FG_ERROR_FRAME_ORDER;
+    }
+
+    AromaFGStatus cancel(uint64_t frame_id) {
+        for (auto& slot : slots_data_) {
+            if (!slot.recording || slot.recorded_frame != frame_id) continue;
+            // Caller guarantees the command buffer was abandoned before this call.
+            if (vkResetDescriptorPool(context_.device, slot.descriptors, 0) != VK_SUCCESS)
+                return AROMA_FG_ERROR_BACKEND;
+            slot.recording = false;
+            slot.recorded_frame = 0;
+            // prepare_resources() changes this CPU-side flag while recording.
+            // Roll it back when the host discards the command buffer so the next
+            // recording uses the actual pre-transaction image initialization state.
+            resources_.initialized = slot.resources_initialized_before_record;
+            slot.resources_initialized_before_record = false;
+            return AROMA_FG_OK;
+        }
+        // Validation may fail before any Vulkan command or slot reservation.
+        return AROMA_FG_OK;
+    }
 
     AromaFGStatus collect(uint32_t index, AromaFGVulkanTimingV1& out) {
         if (index >= slots_) return AROMA_FG_ERROR_INVALID_ARGUMENT;
@@ -719,24 +760,6 @@ private:
         return true;
     }
 
-    void read_timing(Slot& slot, AromaFGFrameOutput& output) {
-        if (!slot.has_timestamps || !slot.timestamps) return;
-        uint64_t q[6]{};
-        VkResult r = vkGetQueryPoolResults(context_.device, slot.timestamps, 0, 6,
-            sizeof(q), q, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
-        if (r != VK_SUCCESS) return;
-        const uint64_t mask = timestamp_bits_ >= 64 ? ~uint64_t(0)
-            : ((uint64_t(1) << timestamp_bits_) - 1u);
-        auto ms = [&](uint64_t a, uint64_t b) {
-            return static_cast<float>((static_cast<double>((b-a)&mask) *
-                static_cast<double>(timestamp_period_)) / 1000000.0);
-        };
-        output.preprocess_gpu_ms = ms(q[0],q[1]);
-        output.flow_gpu_ms = ms(q[2],q[3]);
-        output.synthesis_gpu_ms = ms(q[4],q[5]);
-        slot.has_timestamps = false;
-    }
-
     AromaFGVulkanContextV2 context_{};
     uint32_t slots_ = 3;
     AromaFGConfig config_{};
@@ -781,6 +804,14 @@ AromaFGStatus backend_process(void* user, const AromaFGFrameInput* input, AromaF
     const auto* frame = reinterpret_cast<const AromaFGVulkanFrameV2*>(input->host_frame);
     try { return state->runtime->record(*input, *frame, *output); }
     catch (...) { return AROMA_FG_ERROR_BACKEND; }
+}
+AromaFGStatus backend_commit(void* user, uint64_t frame_id) {
+    auto* state = static_cast<BackendState*>(user);
+    return state && state->runtime ? state->runtime->commit(frame_id) : AROMA_FG_ERROR_BACKEND;
+}
+AromaFGStatus backend_cancel(void* user, uint64_t frame_id) {
+    auto* state = static_cast<BackendState*>(user);
+    return state && state->runtime ? state->runtime->cancel(frame_id) : AROMA_FG_ERROR_BACKEND;
 }
 void backend_shutdown(void* user) { delete static_cast<BackendState*>(user); }
 
@@ -842,6 +873,8 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_create(
     backend->update_config = aromafg::vk::backend_update;
     backend->process_frame = aromafg::vk::backend_process;
     backend->shutdown = aromafg::vk::backend_shutdown;
+    backend->commit_frame = aromafg::vk::backend_commit;
+    backend->cancel_frame = aromafg::vk::backend_cancel;
     return AROMA_FG_OK;
 }
 
