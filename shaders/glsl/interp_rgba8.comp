@@ -1,0 +1,28 @@
+#version 450
+layout(local_size_x=8,local_size_y=8,local_size_z=1) in;
+layout(set=0,binding=0) uniform sampler2D previousFrame;
+layout(set=0,binding=1) uniform sampler2D currentFrame;
+layout(set=0,binding=2,rg16f) uniform readonly image2D forwardFlow;
+layout(set=0,binding=3,rg16f) uniform readonly image2D backwardFlow;
+layout(set=0,binding=4,r16f) uniform readonly image2D forwardConfidence;
+layout(set=0,binding=5,r16f) uniform readonly image2D backwardConfidence;
+layout(set=0,binding=6,rgba8) uniform writeonly image2D generatedFrame;
+layout(push_constant) uniform Params { uint width; uint height; float phase; float confidenceFloor; float flowScale; } pc;
+vec2 clampUv(vec2 uv){return clamp(uv,vec2(0.5)/vec2(pc.width,pc.height),vec2(1.0)-vec2(0.5)/vec2(pc.width,pc.height));}
+void main(){
+ ivec2 p=ivec2(gl_GlobalInvocationID.xy);
+ if(p.x>=int(pc.width)||p.y>=int(pc.height))return;
+ vec2 uv=(vec2(p)+0.5)/vec2(pc.width,pc.height);
+ float t=clamp(pc.phase,0.001,0.999);
+ vec2 f=imageLoad(forwardFlow,p).xy*pc.flowScale,b=imageLoad(backwardFlow,p).xy*pc.flowScale;
+ vec2 prevUv=clampUv(uv-t*f/vec2(pc.width,pc.height));
+ vec2 currUv=clampUv(uv-(1.0-t)*b/vec2(pc.width,pc.height));
+ vec4 a=texture(previousFrame,prevUv),c=texture(currentFrame,currUv);
+ float wa=max(imageLoad(forwardConfidence,p).r,0.0)*(1.0-t);
+ float wc=max(imageLoad(backwardConfidence,p).r,0.0)*t;
+ float sum=wa+wc;
+ vec4 result=sum<max(pc.confidenceFloor,1.0e-4)
+   ? mix(texture(previousFrame,uv),texture(currentFrame,uv),t)
+   : (a*wa+c*wc)/sum;
+ imageStore(generatedFrame,p,result);
+}

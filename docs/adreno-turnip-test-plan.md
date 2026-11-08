@@ -1,7 +1,7 @@
 # Adreno + Mesa Turnip device test plan
 
 ## Status
-No physical-device test has been performed for this milestone. The current Vulkan code provides host-handle validation, cache/descriptor helpers, barriers and a CPU dispatch planner; it does not yet record the complete Frame Generation graph. Run this plan only after the full dispatch backend is implemented.
+Hosted CI run #120 passed the complete ×4 device smoke graph on Mesa lavapipe with Khronos Synchronization Validation enabled and zero validation errors. It verified all three output phases by readback (RGB approximately 64/76/89, 102/102/102, 140/128/115). This is a software Vulkan result only. No physical Adreno/Turnip or Qualcomm proprietary driver test has been performed for this milestone. The current Vulkan code provides host-handle validation, cache/descriptor helpers, barriers and a CPU dispatch planner; it does not yet record the complete Frame Generation graph. Run this plan only after the full dispatch backend is implemented.
 
 ## Required test report
 Record at minimum:
@@ -16,6 +16,7 @@ Record at minimum:
 Before creating compute pipelines, query and record:
 - Compute queue availability for the host-provided queue family.
 - Storage-image support for R16_SFLOAT, R16G16_SFLOAT and R16G16B16A16_SFLOAT.
+- Confirm shaderStorageImageExtendedFormats was enabled at vkCreateDevice; report the enabled VkPhysicalDeviceFeatures, not only supported features.
 - Required image tiling/usage support for every private intermediate image.
 - Format compatibility of the host source and output images.
 - maxComputeWorkGroupInvocations, maxComputeWorkGroupSize and maxComputeWorkGroupCount.
@@ -44,3 +45,28 @@ Do not assume that a format or extension is available because another Vulkan dri
 
 ## Diagnostic comparison
 Test a direct host-to-ICD path first. If the host environment uses bionic-vulkan-wrapper, test it as a separate host configuration. AromaFG must not detect, load, configure or depend on that wrapper. Record wrapper/driver versions in the test report so compatibility issues can be attributed correctly.
+
+
+## Executable smoke test
+
+Build the aroma_fg_device_smoke target with an Android NDK toolchain and AROMA_FG_BUILD_DEVICE_TESTS=ON. The executable creates a Vulkan compute device, allocates two source images and one storage output, runs the public AromaFG Engine adapter, submits the host command buffer, waits its own fence, collects timestamp results and verifies the midpoint pixel against a known color blend.
+
+Example arm64 build:
+
+~~~sh
+cmake -S . -B build-android \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-26 \
+  -DAROMA_FG_ENABLE_VULKAN=ON -DAROMA_FG_BUILD_DEVICE_TESTS=ON
+cmake --build build-android --target aroma_fg_device_smoke
+~~~
+
+For a standalone shell environment, push both libaroma_fg.so and aroma_fg_device_smoke to the device and run with LD_LIBRARY_PATH set to that directory. If the target host selects Turnip, run the test in that same Turnip environment; repeat on the stock Qualcomm proprietary driver. Do not load or replace an ICD from inside AromaFG. If Turnip is available only inside Winlator and is not selectable as the system Vulkan driver for this executable, the standalone smoke binary cannot attach to Winlator's existing VkDevice. In that case this binary tests the system driver only; a small Winlator host-side adapter that passes its borrowed context/frame into AromaFG is still required to exercise the in-host Turnip path. Do not load or replace an ICD from inside AromaFG.
+
+~~~sh
+adb push build-android/libaroma_fg.so /data/local/tmp/
+adb push build-android/aroma_fg_device_smoke /data/local/tmp/
+adb shell 'chmod 755 /data/local/tmp/aroma_fg_device_smoke && LD_LIBRARY_PATH=/data/local/tmp /data/local/tmp/aroma_fg_device_smoke'
+~~~
+
+Record the printed device name/vendor/device/driver version and preserve the complete log. A passing smoke test proves the minimal compute graph and output readback on that driver; it does not replace sustained game/compositor tests or synchronization validation with the Khronos Validation Layer. The device executable is not run by hosted CI.

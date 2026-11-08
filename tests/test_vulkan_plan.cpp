@@ -9,21 +9,27 @@ template<class Handle> Handle fake_handle(uintptr_t value) {
  else return static_cast<Handle>(value);
 }
 int main() {
- AromaFGVulkanContextV1 context{};
+ AromaFGVulkanContextV2 context{};
+ context.struct_size=sizeof(context);context.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;
  assert(aroma_fg_vulkan_validate_context(&context)==0);
  VkImage out_images[2]{fake_handle<VkImage>(1),fake_handle<VkImage>(2)};
  VkImageView out_views[2]{fake_handle<VkImageView>(3),fake_handle<VkImageView>(4)};
  VkImageLayout out_layouts[2]{VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_GENERAL};
- AromaFGVulkanFrameV1 frame{};
+ VkImageLayout restore_layouts[2]{VK_IMAGE_LAYOUT_GENERAL,VK_IMAGE_LAYOUT_GENERAL};
+ AromaFGVulkanFrameV2 frame{};
  frame.struct_size=sizeof(frame);frame.api_version=AROMA_FG_VULKAN_INTEROP_VERSION;
  frame.command_buffer=fake_handle<VkCommandBuffer>(5);
- frame.source_image=fake_handle<VkImage>(6);frame.source_view=fake_handle<VkImageView>(7);
- frame.source_format=VK_FORMAT_R8G8B8A8_UNORM;frame.source_layout=VK_IMAGE_LAYOUT_GENERAL;
- frame.output_images=out_images;frame.output_views=out_views;frame.output_layouts=out_layouts;
+ frame.previous_image=fake_handle<VkImage>(6);frame.current_image=fake_handle<VkImage>(7);
+ frame.previous_view=fake_handle<VkImageView>(8);frame.current_view=fake_handle<VkImageView>(9);
+ frame.source_format=VK_FORMAT_R8G8B8A8_UNORM;
+ frame.previous_layout=VK_IMAGE_LAYOUT_GENERAL;frame.current_layout=VK_IMAGE_LAYOUT_GENERAL;
+ frame.previous_restore_layout=VK_IMAGE_LAYOUT_GENERAL;frame.current_restore_layout=VK_IMAGE_LAYOUT_GENERAL;
+ frame.output_images=out_images;frame.output_views=out_views;
+ frame.output_layouts=out_layouts;frame.output_restore_layouts=restore_layouts;
  frame.output_capacity=2;frame.output_format=VK_FORMAT_R8G8B8A8_UNORM;frame.extent={1280,720};
  assert(aroma_fg_vulkan_validate_frame(&frame,2)==1);
  assert(aroma_fg_vulkan_validate_frame(&frame,3)==0);
- frame.source_view=VK_NULL_HANDLE;
+ frame.current_view=VK_NULL_HANDLE;
  assert(aroma_fg_vulkan_validate_frame(&frame,2)==0);
  const auto levels=make_pyramid(1919,1079,4,32);
  assert(levels.size()==4);

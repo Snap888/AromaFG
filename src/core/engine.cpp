@@ -50,6 +50,7 @@ extern "C" AromaFGEngine* aroma_fg_create(
     e->backend = *backend;
     if (e->backend.initialize &&
         e->backend.initialize(e->backend.user_data, &e->config) != AROMA_FG_OK) {
+        if (e->backend.shutdown) e->backend.shutdown(e->backend.user_data);
         delete e;
         return nullptr;
     }
