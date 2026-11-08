@@ -68,7 +68,7 @@ public:
         : context_(c), slots_(std::clamp(slots, 2u, 4u)) {}
     ~Runtime() { destroy(); }
 
-    bool initialize(const AromaFGConfig& config) {
+    bool initialize(const AromaFGConfig& config, const void* initial_cache, size_t initial_cache_size) {
         config_ = config;
         if (!validate_context({context_.instance, context_.physical_device,
                                context_.device, context_.queue,
@@ -104,7 +104,7 @@ public:
         if (vkCreateSampler(context_.device, &sampler_info, nullptr, &sampler_) != VK_SUCCESS)
             return false;
 
-        if (cache_.create(context_.device) != VK_SUCCESS) return false;
+        if (cache_.create(context_.device, initial_cache, initial_cache_size) != VK_SUCCESS) return false;
         if (!create_pipeline(luma_, embedded::luma_comp, embedded::luma_comp_bytes,
                              {{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER},
                               {1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE}}, sizeof(Push2D)) ||
@@ -213,8 +213,8 @@ public:
                 static_cast<float>(i + 1u) / static_cast<float>(config_.multiplier), 0.025f};
             bind_dispatch(cmd, synthesis, set, &push, sizeof(push), frame.extent);
             image_barrier(cmd, frame.output_images[i], VK_ACCESS_SHADER_WRITE_BIT,
-                    frame.output_access, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                    nonzero_stage(frame.output_stage), VK_IMAGE_LAYOUT_GENERAL,
+                    frame.output_restore_access, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                    nonzero_stage(frame.output_restore_stage), VK_IMAGE_LAYOUT_GENERAL,
                     frame.output_restore_layouts[i]);
         }
         image_barrier(cmd, frame.previous_image, VK_ACCESS_SHADER_READ_BIT, frame.previous_restore_access,
@@ -230,6 +230,8 @@ public:
         output.generated_frames = required;
         return AROMA_FG_OK;
     }
+
+    VkResult export_cache(std::vector<uint8_t>& out) const { return cache_.export_data(out); }
 
     AromaFGStatus collect(uint32_t index, AromaFGVulkanTimingV1& out) {
         if (index >= slots_) return AROMA_FG_ERROR_INVALID_ARGUMENT;
@@ -725,13 +727,15 @@ struct BackendState {
     std::unique_ptr<Runtime> runtime;
     AromaFGVulkanContextV2 context{};
     uint32_t slots = 3;
+    std::vector<uint8_t> initial_cache;
 };
 
 AromaFGStatus backend_initialize(void* user, const AromaFGConfig* config) {
     auto* state = static_cast<BackendState*>(user);
     if (!state || !config) return AROMA_FG_ERROR_INVALID_ARGUMENT;
     state->runtime = std::make_unique<Runtime>(state->context, state->slots);
-    return state->runtime->initialize(*config) ? AROMA_FG_OK : AROMA_FG_ERROR_UNSUPPORTED;
+    return state->runtime->initialize(*config, state->initial_cache.data(), state->initial_cache.size())
+        ? AROMA_FG_OK : AROMA_FG_ERROR_UNSUPPORTED;
 }
 void backend_reset(void*, uint32_t) {}
 AromaFGStatus backend_update(void* user, const AromaFGConfig* config) {
@@ -788,6 +792,11 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_create(
     if (!state) return AROMA_FG_ERROR_BACKEND;
     state->context = info->context;
     state->slots = info->in_flight_slots ? info->in_flight_slots : 3u;
+    if (info->pipeline_cache_size && !info->pipeline_cache_data) { delete state; return AROMA_FG_ERROR_INVALID_ARGUMENT; }
+    if (info->pipeline_cache_size) {
+        const auto* begin = static_cast<const uint8_t*>(info->pipeline_cache_data);
+        state->initial_cache.assign(begin, begin + info->pipeline_cache_size);
+    }
     if (state->slots < 2 || state->slots > 4) { delete state; return AROMA_FG_ERROR_INVALID_ARGUMENT; }
     std::memset(backend, 0, sizeof(*backend));
     backend->struct_size = sizeof(*backend);
@@ -811,4 +820,21 @@ extern "C" AromaFGStatus aroma_fg_vulkan_backend_collect_timing(
     auto* state = static_cast<BackendState*>(backend->user_data);
     if (!state->runtime) return AROMA_FG_ERROR_BACKEND;
     return state->runtime->collect(slot, *timing);
+}
+
+extern "C" AromaFGStatus aroma_fg_vulkan_backend_export_pipeline_cache(
+    AromaFGBackendV1* backend, void* data, size_t* inout_size) {
+    if (!backend || backend->struct_size < sizeof(*backend) ||
+        backend->api_version != AROMA_FG_API_VERSION || !backend->user_data || !inout_size)
+        return AROMA_FG_ERROR_INVALID_ARGUMENT;
+    auto* state = static_cast<aromafg::vk::BackendState*>(backend->user_data);
+    if (!state->runtime) return AROMA_FG_ERROR_BACKEND;
+    std::vector<uint8_t> bytes;
+    const VkResult result = state->runtime->export_cache(bytes);
+    if (result != VK_SUCCESS) return AROMA_FG_ERROR_BACKEND;
+    if (!data) { *inout_size = bytes.size(); return AROMA_FG_OK; }
+    if (*inout_size < bytes.size()) { *inout_size = bytes.size(); return AROMA_FG_ERROR_INVALID_ARGUMENT; }
+    std::memcpy(data, bytes.data(), bytes.size());
+    *inout_size = bytes.size();
+    return AROMA_FG_OK;
 }
