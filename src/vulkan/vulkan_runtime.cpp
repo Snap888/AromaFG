@@ -60,7 +60,7 @@ struct PushSearch {
 };
 struct PushUpsample { uint32_t width, height; float scale_x, scale_y; };
 struct PushRefine { uint32_t width, height; float consistency_scale; };
-struct PushSynthesis { uint32_t width, height; float phase, confidence_floor; };
+struct PushSynthesis { uint32_t width, height; float phase, confidence_floor, flow_scale; };
 
 class Runtime {
 public:
@@ -211,7 +211,8 @@ public:
             write_storage(set, 5, resources_.refined_backward_confidence.view);
             write_storage(set, 6, frame.output_views[i]);
             const PushSynthesis push{frame.extent.width, frame.extent.height,
-                static_cast<float>(i + 1u) / static_cast<float>(config_.multiplier), 0.025f};
+                static_cast<float>(i + 1u) / static_cast<float>(config_.multiplier), 0.025f,
+                static_cast<float>(config_.flow_scale_percent) / 100.0f};
             bind_dispatch(cmd, synthesis, set, &push, sizeof(push), frame.extent);
             image_barrier(cmd, frame.output_images[i], VK_ACCESS_SHADER_WRITE_BIT,
                     frame.output_restore_access, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
