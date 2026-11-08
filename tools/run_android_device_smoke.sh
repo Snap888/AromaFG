@@ -60,10 +60,7 @@ adb shell "mkdir -p '$DEVICE_DIR'"
 for binary in libaroma_fg.so "${BINARIES[@]}"; do
   adb push "$BUILD_DIR/$binary" "$DEVICE_DIR/$binary" >/dev/null
 done
-adb shell "chmod 700 '$DEVICE_DIR'/"'aroma_fg_contract_tests' \
-  '$DEVICE_DIR'/'aroma_fg_vulkan_plan_tests' \
-  '$DEVICE_DIR'/'aroma_fg_device_smoke' \
-  && chmod 600 '$DEVICE_DIR'/'libaroma_fg.so'"
+adb shell "chmod 700 '$DEVICE_DIR/aroma_fg_contract_tests' '$DEVICE_DIR/aroma_fg_vulkan_plan_tests' '$DEVICE_DIR/aroma_fg_device_smoke' && chmod 600 '$DEVICE_DIR/libaroma_fg.so'"
 
 overall_status=0
 run_device_test() {
