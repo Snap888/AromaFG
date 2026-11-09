@@ -50,6 +50,17 @@ bash tools/run-aromafg-termux.sh
 
 The default run/artifact/hash/commit values are reproducibility pins for the recorded CI artifact. When a newer CI artifact is published, override `AROMAFG_RUN_ID`, `AROMAFG_ARTIFACT_ID`, `AROMAFG_ARTIFACT_SHA256`, `AROMAFG_BUILD_COMMIT` and `AROMAFG_RUNNER_COMMIT` together. Do not update only one pin. The helper has not been executed on a physical device in CI; review its output and attach the generated report. The current pinned artifact was produced by CI run #42565368872; Linux and Android arm64 jobs both completed successfully, including script syntax/ShellCheck, Linux lavapipe graph, and Android cross-compilation.
 
+## Direct Termux execution (no ADB)
+
+For a phone-side run, use `tools/run-aromafg-termux-local.sh`. It runs as a local Termux process, discovers the latest completed successful **push** CI run for this branch, selects its unexpired Android arm64 artifact, checks run/commit/digest metadata, verifies the downloaded ZIP SHA-256 and embedded build commit, then runs the contract, planner and Vulkan smoke binaries locally. It does not pair, connect to or invoke ADB.
+
+~~~sh
+curl -fL "https://raw.githubusercontent.com/Snap888/AromaFG/feature/phase-3-3-android-device-validation/tools/run-aromafg-termux-local.sh" -o aromafg-test.sh
+bash aromafg-test.sh
+~~~
+
+The script requires Termux, GitHub CLI authentication and shared-storage permission if the report is to be copied into Downloads. The report remains in `~/aromafg-validation/` if shared storage is unavailable. It records exact artifact provenance and Vulkan device output. Do not treat a standalone smoke as borrowed-game-device validation.
+
 ## Physical device evidence (2026-11-09)
 
 A direct local Termux run (no ADB) completed successfully on the ASUS AI2205 device. The tested artifact was built from commit `fef098fa96a82a4a5c09fd50d901593f2ddf50cc`; ZIP SHA-256: `41c0882db8bc8d7e2772f0f7fc3814143173e317118a306f8a6be648c3f3abf8`. The report identifies Qualcomm SM8550 / Kalama, Adreno 740, Android 15 / API 35, Vulkan 1.3.128, vendor ID `5143`, device ID `43050a01`, and driverVersion `2150252610`. Contract tests, Vulkan planner tests, standalone Vulkan device smoke and fence-backed slot reuse all exited with status 0. See [physical-device-validation-2026-11-09.md](physical-device-validation-2026-11-09.md).
