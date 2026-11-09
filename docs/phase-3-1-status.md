@@ -19,6 +19,10 @@ The Vulkan smoke test exercises the real adapter and core transaction callbacks 
 
 This covers the critical cancellation/retry path against an actual Vulkan implementation, rather than only a mock backend. The existing smoke test continues to validate generated output phases and synchronization validation when the validation layer is available.
 
+## Physical smoke evidence
+
+The standalone Vulkan smoke scenario (including reset-before-cancel and submit-before-commit) passed on ASUS AI2205 / SM8550 / Adreno 740 using the system Vulkan implementation, binary commit `fef098f`. See [physical device report](physical-device-validation-2026-11-09.md). Khronos validation and synchronization validation were disabled. This does not prove the same scenario on Turnip or through a borrowed game/Winlator device.
+
 ## What this does not prove
 
 - It is not physical Qualcomm Adreno / Turnip / proprietary-driver validation.
@@ -33,7 +37,7 @@ This covers the critical cancellation/retry path against an actual Vulkan implem
 - [ ] CI build and contract tests pass on this branch.
 - [ ] Full Vulkan graph and cancel/retry smoke test pass on Mesa lavapipe with synchronization validation.
 - [ ] Review confirms reset-before-cancel and submit-before-commit ordering.
-- [ ] Physical Adreno + Mesa Turnip run on the target Android device.
+- [x] Physical Adreno 740 system-Vulkan standalone smoke on target Android device (commit `fef098f`; validation layers off).\n- [ ] Physical Mesa Turnip run on the target Android device.
 - [ ] Physical Qualcomm proprietary-driver run where available.
 - [ ] Separate legacy ABI binary compatibility test.
 - [ ] Fence-backed repeated slot reuse and resize/quiescence test.
