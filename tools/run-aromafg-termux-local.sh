@@ -21,6 +21,7 @@ ABI="$(getprop ro.product.cpu.abi | tr -d '\r')"
 
 pkg update -y
 pkg install -y gh curl coreutils grep unzip jq
+termux-setup-storage || true
 mkdir -p "$WORK_DIR" "$BUILD_DIR"
 
 if ! gh auth status >/dev/null 2>&1; then
