@@ -49,7 +49,7 @@ The optional `tools/run-aromafg-termux.sh` helper runs from Termux on the Androi
 bash tools/run-aromafg-termux.sh
 ~~~
 
-The default run/artifact/hash/commit values are reproducibility pins for the recorded CI artifact. When a newer CI artifact is published, override `AROMAFG_RUN_ID`, `AROMAFG_ARTIFACT_ID`, `AROMAFG_ARTIFACT_SHA256`, `AROMAFG_BUILD_COMMIT` and `AROMAFG_RUNNER_COMMIT` together. Do not update only one pin. The helper has not been executed on a physical device in CI; review its output and attach the generated report.
+The default run/artifact/hash/commit values are reproducibility pins for the recorded CI artifact. When a newer CI artifact is published, override `AROMAFG_RUN_ID`, `AROMAFG_ARTIFACT_ID`, `AROMAFG_ARTIFACT_SHA256`, `AROMAFG_BUILD_COMMIT` and `AROMAFG_RUNNER_COMMIT` together. Do not update only one pin. The helper has not been executed on a physical device in CI; review its output and attach the generated report. The current pinned artifact was produced by CI run #42565368872; Linux and Android arm64 jobs both completed successfully, including script syntax/ShellCheck, Linux lavapipe graph, and Android cross-compilation.
 
 ## Outstanding physical validation
 
