@@ -162,10 +162,11 @@ public:
             frame.frame_slot >= slots_ || frame.extent.width != input.width ||
             frame.extent.height != input.height ||
             frame.source_format == VK_FORMAT_UNDEFINED ||
-            (input.format != 0u && input.format != static_cast<uint32_t>(frame.source_format)) ||
-            (frame.output_format != VK_FORMAT_R8G8B8A8_UNORM &&
-             frame.output_format != VK_FORMAT_R16G16B16A16_SFLOAT))
+            (input.format != 0u && input.format != static_cast<uint32_t>(frame.source_format)))
             return AROMA_FG_ERROR_INVALID_ARGUMENT;
+        if (frame.output_format != VK_FORMAT_R8G8B8A8_UNORM &&
+            frame.output_format != VK_FORMAT_R16G16B16A16_SFLOAT)
+            return AROMA_FG_ERROR_UNSUPPORTED;
         const VkFormatFeatureFlags sampled_linear =
             VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
         if (!format_support(frame.source_format, sampled_linear) ||
