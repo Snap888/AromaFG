@@ -37,6 +37,8 @@ The runtime adapter is a real Vulkan compute implementation, not just a pass pla
 
 ## Flow and synthesis
 
+The current runtime builds its pyramid from the full source extent and keeps level-0 forward/backward flow plus refined flow/confidence at full resolution. `AromaFGConfig.flow_scale_percent` is currently applied as a motion-vector magnitude multiplier in synthesis; it does **not** reduce the flow-image resolution. Treat this parameter as an experimental displacement scale, not a performance/resolution preset. Low-resolution flow remains future work.
+
 For each pair of real frames, the runtime computes the luma pyramid once, then performs coarse-to-fine flow search in both directions. Coarse flow is bilinearly upsampled to seed the next finer level. Forward/backward consistency creates confidence masks. The final synthesis pass is dispatched once per phase k / multiplier; flow is not recomputed for every generated frame.
 
 This is the baseline quality path. It does not yet include the Win-FG C1 Lucas–Kanade global-motion pre-warp, C2 TV-L1 regularization, HUD exclusion or its full anti-ghost stack.
