@@ -2,7 +2,7 @@
 
 **Aroma Frame Generation** is a clean-room, Vulkan-based optical-flow frame-generation library for Android (Qualcomm Adreno + Mesa Turnip/proprietary drivers), Winlator/WinNative, DXVK-based hosts and native renderers.
 
-> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. Feature branches contain the baseline Vulkan compute graph, host transaction hardening and fence-backed slot tests. CI includes Mesa lavapipe software execution and an Android arm64-v8a NDK cross-build. No physical Adreno/Turnip or Qualcomm proprietary-driver validation has been completed. This is not yet a production-ready SDK.
+> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. Feature branches contain the baseline Vulkan compute graph, host transaction hardening and fence-backed slot tests. CI includes Mesa lavapipe software execution and an Android arm64-v8a NDK cross-build. A standalone Vulkan smoke test has passed on a physical ASUS AI2205 / Snapdragon SM8550 / Adreno 740 using the system Vulkan implementation (validated binary commit `fef098f`). Khronos validation and synchronization validation were disabled; the report does not identify the driver as Turnip and does not validate a borrowed Winlator/game device. This is not yet a production-ready SDK.
 
 ## Goals
 
@@ -23,9 +23,9 @@
 | Vulkan runtime graph | Present on feature branches |
 | ×2 / ×3 / ×4 phase dispatch | Software smoke-tested on Mesa lavapipe |
 | Linux CI GPU validation | Mesa lavapipe only |
-| Android arm64-v8a | NDK cross-build and standalone ADB smoke runner added in Phase 3.3; hardware run pending |
-| Physical Adreno / Turnip | Not tested |
-| Qualcomm proprietary driver | Not tested |
+| Android arm64-v8a | NDK cross-build; direct Termux tests and standalone Vulkan smoke passed on ASUS AI2205 / Adreno 740 (binary `fef098f`) |
+| Physical Adreno | Standalone system-driver smoke passed on Adreno 740; validation layers were off |
+| Mesa Turnip / exact Qualcomm driver identity | Not independently identified or tested; report records Vulkan driverVersion only |
 | Android SDK / Winlator adapters / Vulkan Layer | Not implemented |
 | AI inference / learned refinement | Research only; not implemented |
 | Production image quality and latency | Not established |
@@ -77,6 +77,7 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - [Phase 3.2 ABI and fence-backed runtime slot validation](docs/phase-3-2-status.md)
 - [Phase 3.3 Android arm64 build and device validation](docs/phase-3-3-status.md)
 - [Vulkan host transaction contract](docs/vulkan-host-contract.md)
+- [Physical Adreno 740 smoke report (2026-11-09)](docs/physical-device-validation-2026-11-09.md)
 - [Repository audit (2026-11-09)](docs/audit-2026-11-09.md)
 
 ## Build and test
