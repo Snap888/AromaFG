@@ -34,7 +34,7 @@ fi
 # runs and explicitly select the newest completed successful run on our branch.
 if [[ -z "$RUN_ID" ]]; then
   RUN_ID="$(gh api "/repos/$REPO/actions/runs?branch=$BRANCH&per_page=50" \
-    | jq -r --arg branch "$BRANCH" '[.workflow_runs[] | select(.head_branch == $branch and .status == "completed" and .conclusion == "success")] | first | .id // empty')"
+    | jq -r --arg branch "$BRANCH" '[.workflow_runs[] | select(.head_branch == $branch and .event == "push" and .status == "completed" and .conclusion == "success")] | first | .id // empty')"
 fi
 [[ -n "$RUN_ID" ]] || fail "No completed successful CI run found for branch $BRANCH."
 ARTIFACTS="$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts?per_page=100")"
