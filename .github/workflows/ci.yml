@@ -19,8 +19,8 @@ jobs:
           sudo apt-get install -y cmake ninja-build g++ python3 libvulkan-dev glslang-tools spirv-tools mesa-vulkan-drivers vulkan-validationlayers shellcheck
       - name: Validate Android helper scripts
         run: |
-          bash -n tools/run_android_device_smoke.sh tools/run-aromafg-termux.sh
-          shellcheck -S error tools/run_android_device_smoke.sh tools/run-aromafg-termux.sh
+          bash -n tools/run_android_device_smoke.sh tools/run-aromafg-termux.sh tools/run-aromafg-termux-local.sh
+          shellcheck -S error tools/run_android_device_smoke.sh tools/run-aromafg-termux.sh tools/run-aromafg-termux-local.sh
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAROMA_FG_BUILD_TESTS=ON -DAROMA_FG_COMPILE_SHADERS=ON -DAROMA_FG_BUILD_DEVICE_TESTS=ON
       - name: Build library, tests and SPIR-V
