@@ -255,6 +255,29 @@ int main() {
  input.host_frame=reinterpret_cast<uintptr_t>(&frame);
  AromaFGFrameOutput output{};output.struct_size=sizeof(output);
 
+ // Unsupported output formats must return UNSUPPORTED, not INVALID_ARGUMENT.
+ const VkFormat supported_output_format=frame.output_format;
+ frame.output_format=VK_FORMAT_B8G8R8A8_UNORM;
+ if(aroma_fg_process(engine,&input,&output)!=AROMA_FG_ERROR_UNSUPPORTED)return 44;
+ if(vkResetCommandPool(dev,pool,0)!=VK_SUCCESS)return 45;
+ if(aroma_fg_cancel_frame(engine,input.frame_id)!=AROMA_FG_OK)return 46;
+ if(vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS)return 47;
+ image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
+ image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
+ vkCmdClearColorImage(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&a,1,&range);
+ vkCmdClearColorImage(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&b,1,&range);
+ image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ for(auto& image:out_images_test)
+  image_barrier(cmd,image.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,0,
+   VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ frame.output_format=supported_output_format;
+ std::printf("UNSUPPORTED_OUTPUT_FORMAT=PASS\\n");
+
  // Host integration case A: record frame 1, abandon/reset the host command pool,
  // then cancel. Retry the identical frame_id using a fresh command buffer recording.
  if(aroma_fg_process(engine,&input,&output)!=AROMA_FG_OK)return 30;
