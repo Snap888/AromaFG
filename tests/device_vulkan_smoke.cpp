@@ -285,6 +285,13 @@ int main() {
   output={}; output.struct_size=sizeof(output);
   if (vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS) return 36;
   const AromaFGStatus reuse_status=aroma_fg_process(engine,&input,&output);
+  if (frame.frame_slot == 0 && timing_status == AROMA_FG_OK &&
+      (std::abs(output.preprocess_gpu_ms - timing.preprocess_gpu_ms) > 0.001f ||
+       std::abs(output.flow_gpu_ms - timing.flow_gpu_ms) > 0.001f ||
+       std::abs(output.synthesis_gpu_ms - timing.synthesis_gpu_ms) > 0.001f)) {
+   std::printf("FRAME_OUTPUT_TIMING_FAIL previous slot timing was not propagated\\n");
+   return 43;
+  }
   if (reuse_status!=AROMA_FG_OK || output.generated_frames!=3) {
    std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\n",
     static_cast<unsigned long long>(input.frame_id),frame.frame_slot,reuse_status,output.generated_frames);
