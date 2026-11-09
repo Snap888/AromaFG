@@ -45,9 +45,9 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] Add a separately compiled C client using the frozen pre-transaction V1 ABI header; CTest passes on lavapipe (run #42522045599).
 - [x] Add a real Vulkan host transaction test covering abandon/reset/cancel/retry/submit/commit/fence and command-pool reuse (run #42522045599; test backend double).
 - [x] Extend the full Vulkan FG runtime smoke test to use slot 1 and then reuse slot 0 only after each submission fence (run #42523914455; Mesa lavapipe).
-- [x] Add pinned Android NDK arm64-v8a cross-build and ADB smoke runner (Phase 3.3; Linux + Android arm64 CI PASS, run #42524817141).
+- [x] Add pinned Android NDK arm64-v8a cross-build and ADB smoke runner (Phase 3.3; Linux + Android arm64 CI PASS, runs #42565368872 and #42565464843).
 - [ ] Run the smoke test on physical Adreno/Turnip and Qualcomm devices; attach exact device reports.
-- [ ] Review/approve Phase 3 PR; test borrowed-device integration with a real host.
+- [ ] Review/approve Phase 3 PR stack; test borrowed-device integration with a real host.
 - [ ] Define robust device-loss recovery and a complete output format conversion/fallback policy.
 
 ## Phase 4 — lightweight Frame Generation MVP
