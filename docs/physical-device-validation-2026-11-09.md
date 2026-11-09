@@ -38,6 +38,8 @@ GitHub Actions push run #42700505141 completed successfully for the same source 
 
 ## Test results
 
+The Vulkan smoke workload uses **320×180** source/output images. Its recorded GPU timings were preprocessing `0.210 ms`, flow/refine `5.322 ms`, synthesis `0.205 ms`. These are measurements of this small synthetic workload only; do not extrapolate them as 1080p/1440p game performance.
+
 | Test | Result |
 |---|---:|
 | `aroma_fg_contract_tests` | PASS — exit 0 |
