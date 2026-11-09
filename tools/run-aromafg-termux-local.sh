@@ -50,15 +50,14 @@ META_DIGEST="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.digest // empty')"
 EXPECTED_COMMIT="${EXPECTED_COMMIT:-$META_COMMIT}"
 EXPECTED_SHA256="${EXPECTED_SHA256:-${META_DIGEST#sha256:}}"
 
-ARTIFACT_META="$(gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID")"
-META_RUN_ID="$(printf '%s' "$ARTIFACT_META" | jq -r '.workflow_run.id // empty')"
-META_COMMIT="$(printf '%s' "$ARTIFACT_META" | jq -r '.workflow_run.head_sha // empty')"
-META_DIGEST="$(printf '%s' "$ARTIFACT_META" | jq -r '.digest // empty')"
-META_EXPIRED="$(printf '%s' "$ARTIFACT_META" | jq -r '.expired // true')"
-[[ "$META_RUN_ID" == "$RUN_ID" ]] || fail "Artifact belongs to run '$META_RUN_ID', not '$RUN_ID'."
-[[ "$META_COMMIT" == "$EXPECTED_COMMIT" ]] || fail "Artifact source commit mismatch: $META_COMMIT."
+# Use the run-artifacts response as the single source of artifact metadata.
+# It already contains expiry, digest, run ID, and source commit.
+META_RUN_ID="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.workflow_run.id // empty')"
+META_COMMIT="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.workflow_run.head_sha // empty')"
+META_DIGEST="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.digest // empty')"
+[[ "$META_RUN_ID" == "$RUN_ID" ]] || fail "Artifact belongs to run $META_RUN_ID, not $RUN_ID."
+[[ -n "$META_COMMIT" && "$META_COMMIT" == "$EXPECTED_COMMIT" ]] || fail "Artifact source commit mismatch: $META_COMMIT."
 [[ "$META_DIGEST" == "sha256:$EXPECTED_SHA256" ]] || fail "GitHub artifact digest metadata mismatch."
-[[ "$META_EXPIRED" == "false" ]] || fail "GitHub artifact is expired."
 
 printf '\nDownloading verified Android arm64 artifact...\n'
 ZIP="$WORK_DIR/aromafg-android-arm64.zip"
