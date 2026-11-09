@@ -39,6 +39,10 @@ struct Slot {
     uint64_t recorded_frame = 0;
     uint64_t completed_frame = 0;
     bool resources_initialized_before_record = false;
+    bool has_completed_timing = false;
+    float last_preprocess_gpu_ms = 0.0f;
+    float last_flow_gpu_ms = 0.0f;
+    float last_synthesis_gpu_ms = 0.0f;
 };
 
 struct Resources {
@@ -246,6 +250,14 @@ public:
         if (config_.profiling_enabled && slot.timestamps)
             vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, slot.timestamps, 5);
         output.generated_frames = required;
+        // Report the latest completed timing sample for this slot. The current
+        // frame has only been recorded; its GPU timings become available after
+        // host submission, fence completion and collect_timing().
+        if (slot.has_completed_timing) {
+            output.preprocess_gpu_ms = slot.last_preprocess_gpu_ms;
+            output.flow_gpu_ms = slot.last_flow_gpu_ms;
+            output.synthesis_gpu_ms = slot.last_synthesis_gpu_ms;
+        }
         return AROMA_FG_OK;
     }
 
@@ -305,6 +317,10 @@ public:
         out.flow_gpu_ms = elapsed(q[2], q[3]);
         out.synthesis_gpu_ms = elapsed(q[4], q[5]);
         out.completed_frame_id = slot.completed_frame;
+        slot.last_preprocess_gpu_ms = out.preprocess_gpu_ms;
+        slot.last_flow_gpu_ms = out.flow_gpu_ms;
+        slot.last_synthesis_gpu_ms = out.synthesis_gpu_ms;
+        slot.has_completed_timing = true;
         slot.has_timestamps = false;
         return AROMA_FG_OK;
     }
