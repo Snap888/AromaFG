@@ -6,7 +6,7 @@ The experimental Vulkan runtime branch has a CI smoke test that executes the com
 
 Phase 3.3 adds a pinned Android arm64-v8a cross-build and an ADB runner for the standalone Vulkan smoke executable. A successful cross-build proves only that the Android target compiles. A successful ADB smoke run proves only that the standalone process executed the compute graph on the selected system Vulkan implementation; it does not prove borrowed-device integration with a game or Winlator.
 
-No physical Adreno/Turnip or Qualcomm proprietary-driver test is claimed until a device report has been collected and reviewed. Do not publish hardware-support, latency, quality or performance claims before the exact device/driver matrix has been exercised.
+A physical ASUS AI2205 / SM8550 / Adreno 740 standalone system-Vulkan smoke report is now available for binary commit `fef098f` (see [physical-device-validation-2026-11-09.md](physical-device-validation-2026-11-09.md)). Khronos validation and synchronization validation were disabled, and the driver identity was not emitted. This is not a Turnip test, a confirmed Qualcomm proprietary-driver revision, or a borrowed-game-device test. Do not publish broad hardware-support, latency, quality or performance claims.
 
 ## Required test report
 
