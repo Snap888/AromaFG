@@ -45,11 +45,15 @@ The test explicitly updates output image layouts and transfer access state after
 - The new full-runtime slot 1 / slot 0 reuse extension is included in this branch. Its CI result is pending until the new run completes.
 - CI uses Mesa lavapipe. A pass is software Vulkan evidence only.
 
+## Physical runtime evidence
+
+The direct Termux smoke on ASUS AI2205 / Adreno 740 (binary commit `fef098f`) exercised slot 1 and then slot 0 reuse after host fence waits, and reported `RUNTIME_SLOT_REUSE=PASS`. See [physical device report](physical-device-validation-2026-11-09.md). Validation and synchronization validation were disabled; Turnip and borrowed-host integration remain untested.
+
 ## Limitations / remaining gates
 
 - This is sequential fence-backed slot reuse, not simultaneous multi-queue execution.
 - Runtime intermediate images are shared across slots; host submission order remains mandatory.
-- No claim is made for physical Adreno, Mesa Turnip on Android, or Qualcomm proprietary drivers.
+- One physical Adreno 740 system-driver smoke is now recorded; exact driver identity, Mesa Turnip and Qualcomm driver matrix remain unverified.
 - Device-loss recovery, resize under load, and sustained multi-frame in-flight stress remain open.
 - PRs remain stacked; no merge into `main` is performed by this step.
 
