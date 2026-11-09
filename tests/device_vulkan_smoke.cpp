@@ -140,24 +140,24 @@ int main() {
   VkPhysicalDeviceProperties2 properties2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
   properties2.pNext=&driver;
   vkGetPhysicalDeviceProperties2(phys,&properties2);
-  std::printf("DRIVER name=%s info=%s conformance=%u.%u.%u\\n",
+  std::printf("DRIVER name=%s info=%s conformance=%u.%u.%u\n",
    driver.driverName,driver.driverInfo,
    driver.conformanceVersion.major,driver.conformanceVersion.minor,
    driver.conformanceVersion.subminor);
  } else {
-  std::printf("DRIVER_PROPERTIES=unavailable (physical Vulkan API < 1.2)\\n");
+  std::printf("DRIVER_PROPERTIES=unavailable (physical Vulkan API < 1.2)\n");
  }
 #else
- std::printf("DRIVER_PROPERTIES=unavailable (headers lack Vulkan 1.2)\\n");
+ std::printf("DRIVER_PROPERTIES=unavailable (headers lack Vulkan 1.2)\n");
 #endif
  uint32_t queue_family_count=0;
  vkGetPhysicalDeviceQueueFamilyProperties(phys,&queue_family_count,nullptr);
  std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
  vkGetPhysicalDeviceQueueFamilyProperties(phys,&queue_family_count,queue_families.data());
  const auto& selected_queue=queue_families[family];
- std::printf("QUEUE family=%u flags=0x%x timestampValidBits=%u\\n",
+ std::printf("QUEUE family=%u flags=0x%x timestampValidBits=%u\n",
   family,selected_queue.queueFlags,selected_queue.timestampValidBits);
- std::printf("LIMITS maxImage2D=%u maxComputeInvocations=%u workgroupSize=%u,%u,%u workgroupCount=%u,%u,%u pushConstants=%u timestampPeriodNs=%.3f\\n",
+ std::printf("LIMITS maxImage2D=%u maxComputeInvocations=%u workgroupSize=%u,%u,%u workgroupCount=%u,%u,%u pushConstants=%u timestampPeriodNs=%.3f\n",
   props.limits.maxImageDimension2D,props.limits.maxComputeWorkGroupInvocations,
   props.limits.maxComputeWorkGroupSize[0],props.limits.maxComputeWorkGroupSize[1],
   props.limits.maxComputeWorkGroupSize[2],props.limits.maxComputeWorkGroupCount[0],
@@ -167,7 +167,7 @@ int main() {
       VK_FORMAT_R16G16_SFLOAT,VK_FORMAT_R16G16B16A16_SFLOAT}) {
   VkFormatProperties format_properties{};
   vkGetPhysicalDeviceFormatProperties(phys,format,&format_properties);
-  std::printf("FORMAT format=%d optimalFeatures=0x%x\\n",
+  std::printf("FORMAT format=%d optimalFeatures=0x%x\n",
    static_cast<int>(format),format_properties.optimalTilingFeatures);
  }
  float priority=1.0f;VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
@@ -325,7 +325,7 @@ int main() {
       (std::abs(output.preprocess_gpu_ms - timing.preprocess_gpu_ms) > 0.001f ||
        std::abs(output.flow_gpu_ms - timing.flow_gpu_ms) > 0.001f ||
        std::abs(output.synthesis_gpu_ms - timing.synthesis_gpu_ms) > 0.001f)) {
-   std::printf("FRAME_OUTPUT_TIMING_FAIL previous slot timing was not propagated\\n");
+   std::printf("FRAME_OUTPUT_TIMING_FAIL previous slot timing was not propagated\n");
    return 43;
   }
   if (reuse_status!=AROMA_FG_OK || output.generated_frames!=3) {
@@ -351,7 +351,7 @@ int main() {
   const AromaFGStatus collect_status=aroma_fg_vulkan_backend_collect_timing(&backend,frame.frame_slot,&reuse_timing);
   if (collect_status!=AROMA_FG_OK && collect_status!=AROMA_FG_BYPASSED) return 42;
  }
- std::printf("RUNTIME_SLOT_REUSE=PASS slots=[1,0] fence_wait_before_pool_and_slot_reuse\\n");
+ std::printf("RUNTIME_SLOT_REUSE=PASS slots=[1,0] fence_wait_before_pool_and_slot_reuse\n");
  std::printf("FG status=%s generated=%u timing_status=%d preprocess_ms=%.3f flow_ms=%.3f synth_ms=%.3f phases=[%u,%u,%u][%u,%u,%u][%u,%u,%u]\n",
   pixel_ok?"PASS":"FAIL",output.generated_frames,timing_status,timing.preprocess_gpu_ms,timing.flow_gpu_ms,timing.synthesis_gpu_ms,
   r0,g0,b0,r1,g1,b1,r2,g2,b2);
