@@ -72,7 +72,7 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 
 - [ ] Fix or redesign command-buffer cancellation and query/resource state tracking.
 - [ ] Add regression coverage for last-completed per-slot timings in `AromaFGFrameOutput`.
-- [ ] Add memory suballocation and memory-budget-aware resource pooling.
+- [ ] Reduce full-resolution flow/seed intermediate memory; implement configurable flow resolution and reuse scratch buffers.\n- [ ] Add memory suballocation and memory-budget-aware resource pooling.
 - [ ] Add robust capability/format checks and device-loss recovery.
 - [ ] Validate descriptor/query slot reuse and resize on real drivers.
 - [ ] Add in-host Android AHardwareBuffer/synchronization integration tests.
@@ -80,7 +80,7 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 ## Phase 6 — Adreno / Turnip optimization
 
 - [ ] Test on named Adreno devices and pinned Turnip revisions.
-- [ ] Profile workgroup sizes, search radius, flow resolution and bandwidth.
+- [ ] Profile workgroup sizes, search radius, flow resolution and bandwidth at 720p/1080p/1440p on Adreno.\n- [ ] Establish a measured performance baseline beyond the 320×180 smoke workload.
 - [ ] Reduce intermediate image count and memory pressure.
 - [ ] Evaluate GMEM/tile behavior without assuming undocumented driver behavior.
 - [ ] Compare proprietary Qualcomm and Turnip paths.
