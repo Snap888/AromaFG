@@ -30,19 +30,20 @@ if ! gh auth status >/dev/null 2>&1; then
   gh auth login
 fi
 
-# Resolve the newest successful Android build instead of pinning an expiring artifact ID.
+# GitHub's workflow-run API filters by run status, not conclusion. Fetch recent
+# runs and explicitly select the newest completed successful run on our branch.
 if [[ -z "$RUN_ID" ]]; then
-  RUN_ID="$(gh api "/repos/$REPO/actions/runs?branch=$BRANCH&status=success&per_page=20" \
-    | jq -r --arg branch "$BRANCH" '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == $branch)] | first | .id // empty')"
+  RUN_ID="$(gh api "/repos/$REPO/actions/runs?branch=$BRANCH&per_page=50" \
+    | jq -r --arg branch "$BRANCH" '[.workflow_runs[] | select(.head_branch == $branch and .status == "completed" and .conclusion == "success")] | first | .id // empty')"
 fi
-[[ -n "$RUN_ID" ]] || fail "No successful CI run found for branch $BRANCH."
+[[ -n "$RUN_ID" ]] || fail "No completed successful CI run found for branch $BRANCH."
 ARTIFACTS="$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts?per_page=100")"
 if [[ -z "$ARTIFACT_ID" ]]; then
   ARTIFACT_ID="$(printf '%s' "$ARTIFACTS" | jq -r '[.artifacts[] | select(.name == "aromafg-android-arm64" and .expired == false)] | first | .id // empty')"
 fi
 [[ -n "$ARTIFACT_ID" ]] || fail "No unexpired aromafg-android-arm64 artifact found in run $RUN_ID."
-ARTIFACT_ROW="$(printf '%s' "$ARTIFACTS" | jq -c --argjson id "$ARTIFACT_ID" '.artifacts[] | select(.id == $id)')"
-[[ -n "$ARTIFACT_ROW" ]] || fail "Artifact $ARTIFACT_ID does not belong to workflow run $RUN_ID."
+ARTIFACT_ROW="$(printf '%s' "$ARTIFACTS" | jq -c --argjson id "$ARTIFACT_ID" '.artifacts[] | select(.id == $id and .name == "aromafg-android-arm64" and .expired == false)')"
+[[ -n "$ARTIFACT_ROW" ]] || fail "Artifact $ARTIFACT_ID is expired, is not an Android arm64 artifact, or does not belong to run $RUN_ID."
 META_COMMIT="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.workflow_run.head_sha // empty')"
 META_DIGEST="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.digest // empty')"
 [[ -n "$META_COMMIT" && "$META_DIGEST" == sha256:* ]] || fail "Artifact metadata is missing its commit or SHA-256 digest."
