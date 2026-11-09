@@ -21,7 +21,7 @@
 | Portable C ABI / lifecycle | Present on main |
 | GLSL optical-flow passes | Present on feature branches |
 | Vulkan runtime graph | Present on feature branches |
-| ×2 / ×3 / ×4 phase dispatch | Software smoke-tested on Mesa lavapipe |
+| ×2 / ×3 / ×4 phase dispatch | Smoke-tested on Mesa lavapipe and standalone Adreno 740 system Vulkan; not a quality benchmark |
 | Linux CI GPU validation | Mesa lavapipe only |
 | Android arm64-v8a | NDK cross-build; direct Termux tests and standalone Vulkan smoke passed on ASUS AI2205 / Adreno 740 (binary `fef098f`) |
 | Physical Adreno | Standalone system-driver smoke passed on Adreno 740; validation layers were off |
