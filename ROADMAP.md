@@ -46,9 +46,19 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] Add a real Vulkan host transaction test covering abandon/reset/cancel/retry/submit/commit/fence and command-pool reuse (run #42522045599; test backend double).
 - [x] Extend the full Vulkan FG runtime smoke test to use slot 1 and then reuse slot 0 only after each submission fence (run #42523914455; Mesa lavapipe).
 - [x] Add pinned Android NDK arm64-v8a cross-build and ADB smoke runner (Phase 3.3; Linux + Android arm64 CI PASS, runs #42565368872 and #42565464843).
-- [ ] Run the smoke test on physical Adreno/Turnip and Qualcomm devices; attach exact device reports.
-- [ ] Review/approve Phase 3 PR stack; test borrowed-device integration with a real host.
+- [x] Run standalone direct-Termux Vulkan smoke on physical ASUS AI2205 / Snapdragon SM8550 / Adreno 740 using the system Vulkan implementation; record report for binary commit `fef098f` (validation layers off).
+- [ ] Identify the exact Vulkan driver and repeat with pinned Mesa Turnip revisions; test Qualcomm proprietary driver separately where available.
+- [ ] Review/approve Phase 3 PR stack; resolve PR #9 merge conflict state.
+- [ ] Test borrowed-device integration with a real host/compositor; standalone smoke is not sufficient.
 - [ ] Define robust device-loss recovery and a complete output format conversion/fallback policy.
+
+## Phase 3.4 — borrowed-device host integration validation (next gate)
+
+- [ ] Add a host-owned Vulkan interop example that passes borrowed instance/device/queue/command buffer and host images through the public C API.
+- [ ] Verify command recording, submit/commit, abandon/reset/cancel, fence retirement and slot reuse without AromaFG-owned submission.
+- [ ] Run with Khronos validation + synchronization validation enabled where available.
+- [ ] Capture Vulkan driver properties, format features, queue limits and timestamp support.
+- [ ] Keep Winlator/DXVK adapter work blocked until the host-side sample and lifecycle contract pass.
 
 ## Phase 4 — lightweight Frame Generation MVP
 
@@ -61,6 +71,7 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 ## Phase 5 — Vulkan backend stabilization
 
 - [ ] Fix or redesign command-buffer cancellation and query/resource state tracking.
+- [ ] Add regression coverage for last-completed per-slot timings in `AromaFGFrameOutput`.
 - [ ] Add memory suballocation and memory-budget-aware resource pooling.
 - [ ] Add robust capability/format checks and device-loss recovery.
 - [ ] Validate descriptor/query slot reuse and resize on real drivers.
