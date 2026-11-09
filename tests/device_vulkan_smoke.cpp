@@ -136,14 +136,24 @@ int main() {
   VK_VERSION_MAJOR(props.apiVersion),VK_VERSION_MINOR(props.apiVersion),VK_VERSION_PATCH(props.apiVersion));
 #if defined(VK_VERSION_1_2)
  if (props.apiVersion >= VK_API_VERSION_1_2) {
-  VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
-  VkPhysicalDeviceProperties2 properties2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
-  properties2.pNext=&driver;
-  vkGetPhysicalDeviceProperties2(phys,&properties2);
-  std::printf("DRIVER name=%s info=%s conformance=%u.%u.%u\n",
-   driver.driverName,driver.driverInfo,
-   driver.conformanceVersion.major,driver.conformanceVersion.minor,
-   driver.conformanceVersion.subminor);
+  auto get_properties2=reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(
+   vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2"));
+  if (!get_properties2) {
+   get_properties2=reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(
+    vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2KHR"));
+  }
+  if (get_properties2) {
+   VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
+   VkPhysicalDeviceProperties2 properties2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+   properties2.pNext=&driver;
+   get_properties2(phys,&properties2);
+   std::printf("DRIVER name=%s info=%s conformance=%u.%u.%u\n",
+    driver.driverName,driver.driverInfo,
+    driver.conformanceVersion.major,driver.conformanceVersion.minor,
+    driver.conformanceVersion.subminor);
+  } else {
+   std::printf("DRIVER_PROPERTIES=unavailable (properties2 entry point missing)\n");
+  }
  } else {
   std::printf("DRIVER_PROPERTIES=unavailable (physical Vulkan API < 1.2)\n");
  }
