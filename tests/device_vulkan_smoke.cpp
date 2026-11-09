@@ -75,7 +75,11 @@ void image_barrier(VkCommandBuffer cmd,VkImage image,VkImageLayout old_layout,Vk
 
 int main() {
  VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};app.pApplicationName="AromaFG device smoke";
- app.apiVersion=VK_API_VERSION_1_1;
+ uint32_t loader_api_version=VK_API_VERSION_1_1;
+ auto enumerate_instance_version=reinterpret_cast<PFN_vkEnumerateInstanceVersion>(
+  vkGetInstanceProcAddr(VK_NULL_HANDLE,"vkEnumerateInstanceVersion"));
+ if(enumerate_instance_version) enumerate_instance_version(&loader_api_version);
+ app.apiVersion=loader_api_version>=VK_API_VERSION_1_2?VK_API_VERSION_1_2:VK_API_VERSION_1_1;
  VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};ici.pApplicationInfo=&app;
  uint32_t layer_count=0;vkEnumerateInstanceLayerProperties(&layer_count,nullptr);
  std::vector<VkLayerProperties> layers(layer_count);vkEnumerateInstanceLayerProperties(&layer_count,layers.data());
@@ -135,7 +139,7 @@ int main() {
   props.deviceName,props.vendorID,props.deviceID,props.driverVersion,
   VK_VERSION_MAJOR(props.apiVersion),VK_VERSION_MINOR(props.apiVersion),VK_VERSION_PATCH(props.apiVersion));
 #if defined(VK_VERSION_1_2)
- if (props.apiVersion >= VK_API_VERSION_1_2) {
+ if (props.apiVersion >= VK_API_VERSION_1_2 && app.apiVersion >= VK_API_VERSION_1_2) {
   auto get_properties2=reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(
    vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2"));
   if (!get_properties2) {
@@ -155,7 +159,7 @@ int main() {
    std::printf("DRIVER_PROPERTIES=unavailable (properties2 entry point missing)\n");
   }
  } else {
-  std::printf("DRIVER_PROPERTIES=unavailable (physical Vulkan API < 1.2)\n");
+  std::printf("DRIVER_PROPERTIES=unavailable (instance or physical Vulkan API < 1.2)\n");
  }
 #else
  std::printf("DRIVER_PROPERTIES=unavailable (headers lack Vulkan 1.2)\n");
