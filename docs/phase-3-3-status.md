@@ -26,20 +26,19 @@ tools/run_android_device_smoke.sh build-android
 tools/run_android_device_smoke.sh build-android aromafg-device-report.txt SERIAL
 ~~~
 
-
 The runner requires exactly one authorized ADB device unless an explicit serial is supplied (argument 3 or `ADB_SERIAL`). It rejects targets without arm64-v8a support and Android API 26 or newer before deployment. All device-side commands are scoped to the selected serial.
 
 The CI artifact contains `aromafg-build-commit.txt` beside the binaries. The runner reads that file and records it as the binary provenance. If running a locally built binary, set `AROMAFG_BUILD_COMMIT` to its exact 40-character source commit. If neither is supplied, the report explicitly records unknown; it never substitutes the current checkout SHA.
 
-The script captures product manufacturer/model/device, SoC manufacturer/model, board platform, Android release/API, build fingerprint/security patch and kernel version. It then pushes `libaroma_fg.so` and `aroma_fg_device_smoke` to `/data/local/tmp/aromafg` and executes the standalone Vulkan smoke test.
+The script captures product manufacturer/model, SoC manufacturer/model, board platform, Android release/API, build fingerprint/security patch and kernel version. It then pushes `libaroma_fg.so` and `aroma_fg_device_smoke` to `/data/local/tmp/aromafg` and executes the standalone Vulkan smoke test.
 
 The smoke executable creates its own Vulkan instance/device/queue. It is not an adapter for an existing game's or Winlator's VkDevice and does not validate compositor/present integration. The test may run without Khronos validation layers if the Android image does not expose them; the report must preserve the emitted validation status.
 
 ## CI evidence
 
-- Linux lavapipe workflow passed in run #42524916969; this remains software Vulkan evidence.
-- Android arm64-v8a cross-build passed in run #42524916969, including the shared library, contract/planner test binaries and standalone Vulkan smoke executable.
-- The Android artifact bundle includes the exact source commit metadata. The cross-build cannot execute binaries on a physical device; no Android hardware result is claimed.
+- Run [#42565368872](https://github.com/Snap888/AromaFG/actions/runs/42565368872) completed successfully: Linux lavapipe graph with synchronization validation and Android arm64-v8a NDK cross-build.
+- Newer run [#42565464843](https://github.com/Snap888/AromaFG/actions/runs/42565464843) also completed successfully. Both `linux` and `android-arm64` jobs passed, including helper script validation, Linux build/contract/full Vulkan graph, Android NDK configure, arm64 cross-compilation, provenance and artifact upload.
+- These are CI results. Linux Vulkan execution used Mesa lavapipe; Android CI cross-compiles but does not execute on the physical phone.
 
 ## Termux launcher
 
@@ -53,7 +52,7 @@ The default run/artifact/hash/commit values are reproducibility pins for the rec
 
 ## Outstanding physical validation
 
-- Run the ADB smoke on a named physical Adreno device with exact driver details.
+- Run the smoke test on a named physical Adreno device with exact driver details.
 - Repeat with pinned Mesa Turnip revisions and Qualcomm proprietary driver where available.
 - Collect missing Vulkan driver properties, format feature bits, limits, timestamp support and thermal/performance data.
 - Run 30-minute stability and resize/device-loss tests.
