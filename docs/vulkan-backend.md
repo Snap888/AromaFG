@@ -11,7 +11,7 @@ The runtime adapter is a real Vulkan compute implementation, not just a pass pla
 - Allocates a descriptor pool and timestamp query pool per in-flight slot. The host must wait for that slot's submission fence before AromaFG reuses it.
 - Writes descriptors per invocation and records luma, downsample, coarse-to-fine upsample/search in both directions, forward/backward consistency refinement and one synthesis dispatch per requested phase.
 - Inserts explicit image barriers between producer and consumer passes. External input/output transitions include host-provided old access/stage and restore access/stage/layout.
-- Records three timestamp ranges: preprocess, flow/refine and synthesis. Results are read only after the host confirms the slot fence has completed. The timing fields returned in AromaFGFrameOutput are the most recently completed measurements for that reused slot (therefore delayed); aroma_fg_vulkan_backend_collect_timing() exposes the completed frame ID explicitly.
+- Records three timestamp ranges: preprocess, flow/refine and synthesis. Results are read only after the host confirms the slot fence has completed. After `aroma_fg_vulkan_backend_collect_timing()` successfully retires a slot's timestamps, the next recording on that slot copies those last-completed measurements into `AromaFGFrameOutput` (therefore delayed by at least one reuse). The explicit collect API exposes the completed frame ID. Before the first successful collection, these fields remain zero.
 - Exposes a C adapter through aroma_fg_vulkan_backend_create(); pass the returned AromaFGBackendV1 to aroma_fg_create(). The generic Engine calls the Vulkan adapter through its existing process_frame callback.
 
 ## Public API setup
