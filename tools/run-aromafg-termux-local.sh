@@ -2,10 +2,11 @@
 set -Eeuo pipefail
 
 REPO="Snap888/AromaFG"
-RUN_ID="${AROMAFG_RUN_ID:-42565464843}"
-ARTIFACT_ID="${AROMAFG_ARTIFACT_ID:-13651525532}"
-EXPECTED_SHA256="${AROMAFG_ARTIFACT_SHA256:-069b339d2605a91077431db7e38e35c0e7bcf7c67431a759ddd4633110f7167a}"
-EXPECTED_COMMIT="${AROMAFG_BUILD_COMMIT:-da1e0ca636f41b4997222a3ae0c3e6b5feb1f120}"
+BRANCH="feature/phase-3-3-android-device-validation"
+RUN_ID="${AROMAFG_RUN_ID:-}"
+ARTIFACT_ID="${AROMAFG_ARTIFACT_ID:-}"
+EXPECTED_SHA256="${AROMAFG_ARTIFACT_SHA256:-}"
+EXPECTED_COMMIT="${AROMAFG_BUILD_COMMIT:-}"
 WORK_DIR="${HOME}/aromafg-validation"
 BUILD_DIR="${WORK_DIR}/build-android"
 
@@ -28,6 +29,25 @@ if ! gh auth status >/dev/null 2>&1; then
   printf '\nGitHub CLI authentication is required to download the Actions artifact.\n'
   gh auth login
 fi
+
+# Resolve the newest successful Android build instead of pinning an expiring artifact ID.
+if [[ -z "$RUN_ID" ]]; then
+  RUN_ID="$(gh api "/repos/$REPO/actions/runs?branch=$BRANCH&status=success&per_page=20" \
+    | jq -r --arg branch "$BRANCH" '[.workflow_runs[] | select(.conclusion == "success" and .head_branch == $branch)] | first | .id // empty')"
+fi
+[[ -n "$RUN_ID" ]] || fail "No successful CI run found for branch $BRANCH."
+ARTIFACTS="$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts?per_page=100")"
+if [[ -z "$ARTIFACT_ID" ]]; then
+  ARTIFACT_ID="$(printf '%s' "$ARTIFACTS" | jq -r '[.artifacts[] | select(.name == "aromafg-android-arm64" and .expired == false)] | first | .id // empty')"
+fi
+[[ -n "$ARTIFACT_ID" ]] || fail "No unexpired aromafg-android-arm64 artifact found in run $RUN_ID."
+ARTIFACT_ROW="$(printf '%s' "$ARTIFACTS" | jq -c --argjson id "$ARTIFACT_ID" '.artifacts[] | select(.id == $id)')"
+[[ -n "$ARTIFACT_ROW" ]] || fail "Artifact $ARTIFACT_ID does not belong to workflow run $RUN_ID."
+META_COMMIT="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.workflow_run.head_sha // empty')"
+META_DIGEST="$(printf '%s' "$ARTIFACT_ROW" | jq -r '.digest // empty')"
+[[ -n "$META_COMMIT" && "$META_DIGEST" == sha256:* ]] || fail "Artifact metadata is missing its commit or SHA-256 digest."
+EXPECTED_COMMIT="${EXPECTED_COMMIT:-$META_COMMIT}"
+EXPECTED_SHA256="${EXPECTED_SHA256:-${META_DIGEST#sha256:}}"
 
 ARTIFACT_META="$(gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID")"
 META_RUN_ID="$(printf '%s' "$ARTIFACT_META" | jq -r '.workflow_run.id // empty')"
