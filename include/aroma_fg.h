@@ -47,7 +47,7 @@ typedef struct AromaFGConfig {
     uint32_t enabled;
     uint32_t multiplier;
     AromaFGQuality quality;
-    uint32_t flow_scale_percent;
+    uint32_t flow_scale_percent; /* Motion-vector magnitude scale; not flow-image resolution. */
     uint32_t profiling_enabled;
     uint32_t diagnostics_enabled;
 } AromaFGConfig;
