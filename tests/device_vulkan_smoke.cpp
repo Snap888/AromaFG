@@ -134,6 +134,42 @@ int main() {
  std::printf("DEVICE %s vendor=%04x device=%04x driver=%u api=%u.%u.%u\n",
   props.deviceName,props.vendorID,props.deviceID,props.driverVersion,
   VK_VERSION_MAJOR(props.apiVersion),VK_VERSION_MINOR(props.apiVersion),VK_VERSION_PATCH(props.apiVersion));
+#if defined(VK_VERSION_1_2)
+ if (props.apiVersion >= VK_API_VERSION_1_2) {
+  VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
+  VkPhysicalDeviceProperties2 properties2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+  properties2.pNext=&driver;
+  vkGetPhysicalDeviceProperties2(phys,&properties2);
+  std::printf("DRIVER name=%s info=%s conformance=%u.%u.%u\\n",
+   driver.driverName,driver.driverInfo,
+   driver.conformanceVersion.major,driver.conformanceVersion.minor,
+   driver.conformanceVersion.subminor);
+ } else {
+  std::printf("DRIVER_PROPERTIES=unavailable (physical Vulkan API < 1.2)\\n");
+ }
+#else
+ std::printf("DRIVER_PROPERTIES=unavailable (headers lack Vulkan 1.2)\\n");
+#endif
+ uint32_t queue_family_count=0;
+ vkGetPhysicalDeviceQueueFamilyProperties(phys,&queue_family_count,nullptr);
+ std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+ vkGetPhysicalDeviceQueueFamilyProperties(phys,&queue_family_count,queue_families.data());
+ const auto& selected_queue=queue_families[family];
+ std::printf("QUEUE family=%u flags=0x%x timestampValidBits=%u\\n",
+  family,selected_queue.queueFlags,selected_queue.timestampValidBits);
+ std::printf("LIMITS maxImage2D=%u maxComputeInvocations=%u workgroupSize=%u,%u,%u workgroupCount=%u,%u,%u pushConstants=%u timestampPeriodNs=%.3f\\n",
+  props.limits.maxImageDimension2D,props.limits.maxComputeWorkGroupInvocations,
+  props.limits.maxComputeWorkGroupSize[0],props.limits.maxComputeWorkGroupSize[1],
+  props.limits.maxComputeWorkGroupSize[2],props.limits.maxComputeWorkGroupCount[0],
+  props.limits.maxComputeWorkGroupCount[1],props.limits.maxComputeWorkGroupCount[2],
+  props.limits.maxPushConstantsSize,props.limits.timestampPeriod);
+ for (VkFormat format : {VK_FORMAT_R8G8B8A8_UNORM,VK_FORMAT_R16_SFLOAT,
+      VK_FORMAT_R16G16_SFLOAT,VK_FORMAT_R16G16B16A16_SFLOAT}) {
+  VkFormatProperties format_properties{};
+  vkGetPhysicalDeviceFormatProperties(phys,format,&format_properties);
+  std::printf("FORMAT format=%d optimalFeatures=0x%x\\n",
+   static_cast<int>(format),format_properties.optimalTilingFeatures);
+ }
  float priority=1.0f;VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
  qci.queueFamilyIndex=family;qci.queueCount=1;qci.pQueuePriorities=&priority;
  VkPhysicalDeviceFeatures supported_features{};vkGetPhysicalDeviceFeatures(phys,&supported_features);
