@@ -276,7 +276,7 @@ int main() {
   image_barrier(cmd,image.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,0,
    VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
  frame.output_format=supported_output_format;
- std::printf("UNSUPPORTED_OUTPUT_FORMAT=PASS\\n");
+ std::printf("UNSUPPORTED_OUTPUT_FORMAT=PASS\n");
 
  // Host integration case A: record frame 1, abandon/reset the host command pool,
  // then cancel. Retry the identical frame_id using a fresh command buffer recording.
