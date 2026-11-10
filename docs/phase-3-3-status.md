@@ -36,6 +36,9 @@ The smoke executable creates its own Vulkan instance/device/queue. It is not an 
 
 ## CI evidence
 
+- Latest branch head `56fa27396383e35613006d58b0b80b499cedc98f`: GitHub Actions push run [#42702837268](https://github.com/Snap888/AromaFG/actions/runs/42702837268) passed both `linux` and `android-arm64` jobs. Linux ran the lavapipe graph with synchronization validation; Android completed the arm64 NDK cross-build. Android artifact ID: `13712935242`; GitHub artifact digest: `sha256:2da810713f70db6fba7e9aa4b0dbfb30840450ba6e2564f5b6530ff65b888d0f`.
+- The latest smoke source checks that, after the host fence wait and explicit timing collection, the next use of slot 0 receives the previously completed GPU timings in `AromaFGFrameOutput`. This is CI-verified, not yet rerun on the physical phone.
+
 - Run [#42565368872](https://github.com/Snap888/AromaFG/actions/runs/42565368872) completed successfully: Linux lavapipe graph with synchronization validation and Android arm64-v8a NDK cross-build.
 - Newer run [#42565464843](https://github.com/Snap888/AromaFG/actions/runs/42565464843) also completed successfully. Both `linux` and `android-arm64` jobs passed, including helper script validation, Linux build/contract/full Vulkan graph, Android NDK configure, arm64 cross-compilation, provenance and artifact upload.
 - These are CI results. Linux Vulkan execution used Mesa lavapipe; Android CI cross-compiles but does not execute on the physical phone.
@@ -65,15 +68,20 @@ The script requires Termux, GitHub CLI authentication and shared-storage permiss
 
 A direct local Termux run (no ADB) completed successfully on the ASUS AI2205 device. The tested artifact was built from commit `fef098fa96a82a4a5c09fd50d901593f2ddf50cc`; ZIP SHA-256: `41c0882db8bc8d7e2772f0f7fc3814143173e317118a306f8a6be648c3f3abf8`. The report identifies Qualcomm SM8550 / Kalama, Adreno 740, Android 15 / API 35, Vulkan 1.3.128, vendor ID `5143`, device ID `43050a01`, and driverVersion `2150252610`. Contract tests, Vulkan planner tests, standalone Vulkan device smoke and fence-backed slot reuse all exited with status 0. See [physical-device-validation-2026-11-09.md](physical-device-validation-2026-11-09.md).
 
-**Evidence limits:** `VALIDATION_LAYER=off` and `SYNC_VALIDATION=off`; the smoke output did not expose `driverName` / `driverInfo`, so this is not evidence of a specific Turnip or Qualcomm proprietary-driver build. The test creates its own Vulkan instance/device/queue; it is not a borrowed Winlator/game device. The tested binary predates the subsequent timing-output fix commits; those commits still require CI and device regression validation.
+**Evidence limits:** `VALIDATION_LAYER=off` and `SYNC_VALIDATION=off`; the report from this run did not include `driverName` / `driverInfo`, so it does not identify a specific Turnip or Qualcomm proprietary-driver build. The test creates its own Vulkan instance/device/queue; it is not a borrowed Winlator/game device. The tested binary predates the timing-output propagation fix now present at `56fa273`. CI for that fix passed; physical-device regression remains outstanding. The current smoke source also resolves `vkGetPhysicalDeviceProperties2` dynamically and attempts to print `VkPhysicalDeviceDriverProperties`; rerun the latest artifact to capture those fields.
 
 ## Outstanding physical validation
 
-- Repeat the smoke test with validation + synchronization validation enabled on a named physical Adreno device and capture `VK_EXT_driver_properties` where available.
+- Re-run the latest Android artifact from CI run #42702837268 on the ASUS AI2205 to validate timing-output propagation and capture `VkPhysicalDeviceDriverProperties`.
+- Repeat the smoke test with Khronos validation + synchronization validation enabled on a named physical Adreno device where the layers are available.
 - Repeat with pinned Mesa Turnip revisions and identify/test the Qualcomm proprietary driver separately where available.
 - Collect missing Vulkan driver properties, format feature bits, limits, timestamp support and thermal/performance data.
 - Run 30-minute stability and resize/device-loss tests.
 - Add a separate borrowed-device host integration test; standalone smoke is not sufficient for Winlator/game compatibility.
+
+## Latest source vs physical binary
+
+The physical report above is valid evidence for commit `fef098f` only. The latest source tested by CI is `56fa273`; its Android artifact is available from run [#42702837268](https://github.com/Snap888/AromaFG/actions/runs/42702837268). The direct Termux launcher automatically selects the newest successful `push` run for this branch, verifies its artifact provenance and executes the updated binaries. A fresh on-device run is required before claiming the timing-output fix or driver-property diagnostic was exercised on Adreno.
 
 ## Exit status
 
