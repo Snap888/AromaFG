@@ -39,6 +39,10 @@ struct Slot {
     uint64_t recorded_frame = 0;
     uint64_t completed_frame = 0;
     bool resources_initialized_before_record = false;
+    bool has_completed_timing = false;
+    float last_preprocess_gpu_ms = 0.0f;
+    float last_flow_gpu_ms = 0.0f;
+    float last_synthesis_gpu_ms = 0.0f;
 };
 
 struct Resources {
@@ -158,10 +162,11 @@ public:
             frame.frame_slot >= slots_ || frame.extent.width != input.width ||
             frame.extent.height != input.height ||
             frame.source_format == VK_FORMAT_UNDEFINED ||
-            (input.format != 0u && input.format != static_cast<uint32_t>(frame.source_format)) ||
-            (frame.output_format != VK_FORMAT_R8G8B8A8_UNORM &&
-             frame.output_format != VK_FORMAT_R16G16B16A16_SFLOAT))
+            (input.format != 0u && input.format != static_cast<uint32_t>(frame.source_format)))
             return AROMA_FG_ERROR_INVALID_ARGUMENT;
+        if (frame.output_format != VK_FORMAT_R8G8B8A8_UNORM &&
+            frame.output_format != VK_FORMAT_R16G16B16A16_SFLOAT)
+            return AROMA_FG_ERROR_UNSUPPORTED;
         const VkFormatFeatureFlags sampled_linear =
             VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
         if (!format_support(frame.source_format, sampled_linear) ||
@@ -246,6 +251,14 @@ public:
         if (config_.profiling_enabled && slot.timestamps)
             vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, slot.timestamps, 5);
         output.generated_frames = required;
+        // Report the latest completed timing sample for this slot. The current
+        // frame has only been recorded; its GPU timings become available after
+        // host submission, fence completion and collect_timing().
+        if (slot.has_completed_timing) {
+            output.preprocess_gpu_ms = slot.last_preprocess_gpu_ms;
+            output.flow_gpu_ms = slot.last_flow_gpu_ms;
+            output.synthesis_gpu_ms = slot.last_synthesis_gpu_ms;
+        }
         return AROMA_FG_OK;
     }
 
@@ -305,6 +318,10 @@ public:
         out.flow_gpu_ms = elapsed(q[2], q[3]);
         out.synthesis_gpu_ms = elapsed(q[4], q[5]);
         out.completed_frame_id = slot.completed_frame;
+        slot.last_preprocess_gpu_ms = out.preprocess_gpu_ms;
+        slot.last_flow_gpu_ms = out.flow_gpu_ms;
+        slot.last_synthesis_gpu_ms = out.synthesis_gpu_ms;
+        slot.has_completed_timing = true;
         slot.has_timestamps = false;
         return AROMA_FG_OK;
     }

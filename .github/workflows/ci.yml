@@ -16,7 +16,11 @@ jobs:
       - name: Install build and shader tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++ python3 libvulkan-dev glslang-tools spirv-tools mesa-vulkan-drivers vulkan-validationlayers
+          sudo apt-get install -y cmake ninja-build g++ python3 libvulkan-dev glslang-tools spirv-tools mesa-vulkan-drivers vulkan-validationlayers shellcheck
+      - name: Validate Android helper scripts
+        run: |
+          bash -n tools/run_android_device_smoke.sh tools/run-aromafg-termux.sh tools/run-aromafg-termux-local.sh
+          shellcheck -S error tools/run_android_device_smoke.sh tools/run-aromafg-termux.sh tools/run-aromafg-termux-local.sh
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DAROMA_FG_BUILD_TESTS=ON -DAROMA_FG_COMPILE_SHADERS=ON -DAROMA_FG_BUILD_DEVICE_TESTS=ON
       - name: Build library, tests and SPIR-V
@@ -33,3 +37,42 @@ jobs:
         with:
           name: aromafg-shaders
           path: build/generated/spv/*.spv
+
+  android-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned NDK and host shader tools
+        run: |
+          test -n "$ANDROID_HOME"
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          test -x "$SDKMANAGER"
+          "$SDKMANAGER" --install "ndk;27.2.12479018"
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build python3 glslang-tools spirv-tools
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+      - name: Configure arm64-v8a Android build
+        run: |
+          cmake -S . -B build-android -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-26 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DAROMA_FG_ENABLE_VULKAN=ON \
+            -DAROMA_FG_COMPILE_SHADERS=ON \
+            -DAROMA_FG_BUILD_TESTS=ON \
+            -DAROMA_FG_BUILD_DEVICE_TESTS=ON
+      - name: Cross-compile library, contract tests and Vulkan device smoke
+        run: cmake --build build-android --parallel
+      - name: Write exact build provenance
+        run: git rev-parse HEAD > build-android/aromafg-build-commit.txt
+      - name: Upload Android arm64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aromafg-android-arm64
+          path: |
+            build-android/libaroma_fg.so
+            build-android/aroma_fg_device_smoke
+            build-android/aroma_fg_contract_tests
+            build-android/aroma_fg_vulkan_plan_tests
+            build-android/aromafg-build-commit.txt

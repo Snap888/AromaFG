@@ -2,7 +2,7 @@
 
 **Aroma Frame Generation** is a clean-room, Vulkan-based optical-flow frame-generation library for Android (Qualcomm Adreno + Mesa Turnip/proprietary drivers), Winlator/WinNative, DXVK-based hosts and native renderers.
 
-> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. The feature/vulkan-engine-runtime branch adds a baseline Vulkan compute graph and a lavapipe smoke test. No physical Adreno/Turnip or Qualcomm proprietary-driver validation has been completed. This is not yet a production-ready SDK.
+> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. Feature branches contain the baseline Vulkan compute graph, host transaction hardening and fence-backed slot tests. CI includes Mesa lavapipe software execution and an Android arm64-v8a NDK cross-build. A standalone Vulkan smoke test has passed on a physical ASUS AI2205 / Snapdragon SM8550 / Adreno 740 using the system Vulkan implementation (validated binary commit `fef098f`). Khronos validation and synchronization validation were disabled; the report does not identify the driver as Turnip and does not validate a borrowed Winlator/game device. The newer branch head `56fa273` adds a per-slot timing-output regression assertion and passes Linux + Android CI, but has not yet been rerun on the phone. This is not yet a production-ready SDK.
 
 ## Goals
 
@@ -20,11 +20,12 @@
 |---|---|
 | Portable C ABI / lifecycle | Present on main |
 | GLSL optical-flow passes | Present on feature branches |
-| Vulkan runtime graph | Present on feature/vulkan-engine-runtime |
-| ×2 / ×3 / ×4 phase dispatch | Implemented in runtime branch; software smoke-tested |
-| CI GPU validation | Mesa lavapipe only |
-| Physical Adreno / Turnip | Not tested |
-| Qualcomm proprietary driver | Not tested |
+| Vulkan runtime graph | Present on feature branches |
+| ×2 / ×3 / ×4 phase dispatch | Smoke-tested on Mesa lavapipe and standalone Adreno 740 system Vulkan; not a quality benchmark |
+| Linux CI GPU validation | Mesa lavapipe only |
+| Android arm64-v8a | NDK cross-build; direct Termux tests and standalone Vulkan smoke passed on ASUS AI2205 / Adreno 740 (binary `fef098f`) |
+| Physical Adreno | Standalone system-driver smoke passed on Adreno 740; validation layers were off |
+| Mesa Turnip / exact Qualcomm driver identity | Not independently identified or tested; report records Vulkan driverVersion only |
 | Android SDK / Winlator adapters / Vulkan Layer | Not implemented |
 | AI inference / learned refinement | Research only; not implemented |
 | Production image quality and latency | Not established |
@@ -35,7 +36,7 @@ The Vulkan runtime branch currently supports RGBA8_UNORM and RGBA16_SFLOAT outpu
 
 1. Estimate motion once per consecutive source-frame pair; reuse it for each generated phase.
 2. Keep capture, command submission, synchronization, swapchain acquisition and presentation owned by the host.
-3. A successful Vulkan `aroma_fg_process()` means commands were recorded, not submitted. The host must call `aroma_fg_commit_frame()` after successful queue submission, or abandon/reset the command buffer and call `aroma_fg_cancel_frame()`.
+3. A successful Vulkan aroma_fg_process() means commands were recorded, not submitted. The host must call aroma_fg_commit_frame() after successful queue submission, or abandon/reset the command buffer and call aroma_fg_cancel_frame().
 4. Frame IDs advance only on transaction commit; cancelled recordings may be retried with the same ID.
 5. Borrowed Vulkan handles must remain alive until recorded commands complete; callback payload lifetime and GPU resource lifetime are distinct.
 6. Bypass safely on invalid input, unsupported format/capability, scene discontinuity or backend failure.
@@ -56,6 +57,7 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - src/vulkan/ — Vulkan helpers and compute runtime.
 - shaders/glsl/ — GLSL compute sources; offline SPIR-V compilation.
 - tests/ — contract, planner and Vulkan smoke tests.
+- tools/ — shader utilities and Android device smoke runner.
 - docs/ — architecture, integration, validation and research notes.
 
 ## Documentation
@@ -73,7 +75,11 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - [Phase 2 technology research](docs/phase-2-research.md)
 - [Phase 3 lifecycle hardening status](docs/phase-3-status.md)
 - [Phase 3.2 ABI and fence-backed runtime slot validation](docs/phase-3-2-status.md)
+- [Phase 3.3 Android arm64 build and device validation](docs/phase-3-3-status.md)
 - [Vulkan host transaction contract](docs/vulkan-host-contract.md)
+- [Physical Adreno 740 smoke report (2026-11-09)](docs/physical-device-validation-2026-11-09.md)
+- [Repository audit (2026-11-09)](docs/audit-2026-11-09.md)
+- [Repository audit follow-up (2026-11-10)](docs/audit-2026-11-10.md)
 
 ## Build and test
 

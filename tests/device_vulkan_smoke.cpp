@@ -75,7 +75,11 @@ void image_barrier(VkCommandBuffer cmd,VkImage image,VkImageLayout old_layout,Vk
 
 int main() {
  VkApplicationInfo app{VK_STRUCTURE_TYPE_APPLICATION_INFO};app.pApplicationName="AromaFG device smoke";
- app.apiVersion=VK_API_VERSION_1_1;
+ uint32_t loader_api_version=VK_API_VERSION_1_1;
+ auto enumerate_instance_version=reinterpret_cast<PFN_vkEnumerateInstanceVersion>(
+  vkGetInstanceProcAddr(VK_NULL_HANDLE,"vkEnumerateInstanceVersion"));
+ if(enumerate_instance_version) enumerate_instance_version(&loader_api_version);
+ app.apiVersion=loader_api_version>=VK_API_VERSION_1_2?VK_API_VERSION_1_2:VK_API_VERSION_1_1;
  VkInstanceCreateInfo ici{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};ici.pApplicationInfo=&app;
  uint32_t layer_count=0;vkEnumerateInstanceLayerProperties(&layer_count,nullptr);
  std::vector<VkLayerProperties> layers(layer_count);vkEnumerateInstanceLayerProperties(&layer_count,layers.data());
@@ -134,6 +138,52 @@ int main() {
  std::printf("DEVICE %s vendor=%04x device=%04x driver=%u api=%u.%u.%u\n",
   props.deviceName,props.vendorID,props.deviceID,props.driverVersion,
   VK_VERSION_MAJOR(props.apiVersion),VK_VERSION_MINOR(props.apiVersion),VK_VERSION_PATCH(props.apiVersion));
+#if defined(VK_VERSION_1_2)
+ if (props.apiVersion >= VK_API_VERSION_1_2 && app.apiVersion >= VK_API_VERSION_1_2) {
+  auto get_properties2=reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(
+   vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2"));
+  if (!get_properties2) {
+   get_properties2=reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2>(
+    vkGetInstanceProcAddr(instance,"vkGetPhysicalDeviceProperties2KHR"));
+  }
+  if (get_properties2) {
+   VkPhysicalDeviceDriverProperties driver{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES};
+   VkPhysicalDeviceProperties2 properties2{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+   properties2.pNext=&driver;
+   get_properties2(phys,&properties2);
+   std::printf("DRIVER name=%s info=%s conformance=%u.%u.%u\n",
+    driver.driverName,driver.driverInfo,
+    driver.conformanceVersion.major,driver.conformanceVersion.minor,
+    driver.conformanceVersion.subminor);
+  } else {
+   std::printf("DRIVER_PROPERTIES=unavailable (properties2 entry point missing)\n");
+  }
+ } else {
+  std::printf("DRIVER_PROPERTIES=unavailable (instance or physical Vulkan API < 1.2)\n");
+ }
+#else
+ std::printf("DRIVER_PROPERTIES=unavailable (headers lack Vulkan 1.2)\n");
+#endif
+ uint32_t queue_family_count=0;
+ vkGetPhysicalDeviceQueueFamilyProperties(phys,&queue_family_count,nullptr);
+ std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+ vkGetPhysicalDeviceQueueFamilyProperties(phys,&queue_family_count,queue_families.data());
+ const auto& selected_queue=queue_families[family];
+ std::printf("QUEUE family=%u flags=0x%x timestampValidBits=%u\n",
+  family,selected_queue.queueFlags,selected_queue.timestampValidBits);
+ std::printf("LIMITS maxImage2D=%u maxComputeInvocations=%u workgroupSize=%u,%u,%u workgroupCount=%u,%u,%u pushConstants=%u timestampPeriodNs=%.3f\n",
+  props.limits.maxImageDimension2D,props.limits.maxComputeWorkGroupInvocations,
+  props.limits.maxComputeWorkGroupSize[0],props.limits.maxComputeWorkGroupSize[1],
+  props.limits.maxComputeWorkGroupSize[2],props.limits.maxComputeWorkGroupCount[0],
+  props.limits.maxComputeWorkGroupCount[1],props.limits.maxComputeWorkGroupCount[2],
+  props.limits.maxPushConstantsSize,props.limits.timestampPeriod);
+ for (VkFormat format : {VK_FORMAT_R8G8B8A8_UNORM,VK_FORMAT_R16_SFLOAT,
+      VK_FORMAT_R16G16_SFLOAT,VK_FORMAT_R16G16B16A16_SFLOAT}) {
+  VkFormatProperties format_properties{};
+  vkGetPhysicalDeviceFormatProperties(phys,format,&format_properties);
+  std::printf("FORMAT format=%d optimalFeatures=0x%x\n",
+   static_cast<int>(format),format_properties.optimalTilingFeatures);
+ }
  float priority=1.0f;VkDeviceQueueCreateInfo qci{VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
  qci.queueFamilyIndex=family;qci.queueCount=1;qci.pQueuePriorities=&priority;
  VkPhysicalDeviceFeatures supported_features{};vkGetPhysicalDeviceFeatures(phys,&supported_features);
@@ -208,6 +258,29 @@ int main() {
  input.width=W;input.height=H;input.format=static_cast<uint32_t>(fmt);
  input.host_frame=reinterpret_cast<uintptr_t>(&frame);
  AromaFGFrameOutput output{};output.struct_size=sizeof(output);
+
+ // Unsupported output formats must return UNSUPPORTED, not INVALID_ARGUMENT.
+ const VkFormat supported_output_format=frame.output_format;
+ frame.output_format=VK_FORMAT_B8G8R8A8_UNORM;
+ if(aroma_fg_process(engine,&input,&output)!=AROMA_FG_ERROR_UNSUPPORTED)return 44;
+ if(vkResetCommandPool(dev,pool,0)!=VK_SUCCESS)return 45;
+ if(aroma_fg_cancel_frame(engine,input.frame_id)!=AROMA_FG_OK)return 46;
+ if(vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS)return 47;
+ image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
+ image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,0,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT);
+ vkCmdClearColorImage(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&a,1,&range);
+ vkCmdClearColorImage(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,&b,1,&range);
+ image_barrier(cmd,prev.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ image_barrier(cmd,curr.image,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,VK_IMAGE_LAYOUT_GENERAL,
+  VK_ACCESS_TRANSFER_WRITE_BIT,VK_ACCESS_SHADER_READ_BIT,VK_PIPELINE_STAGE_TRANSFER_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ for(auto& image:out_images_test)
+  image_barrier(cmd,image.image,VK_IMAGE_LAYOUT_UNDEFINED,VK_IMAGE_LAYOUT_GENERAL,0,
+   VK_ACCESS_SHADER_WRITE_BIT,VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ frame.output_format=supported_output_format;
+ std::printf("UNSUPPORTED_OUTPUT_FORMAT=PASS\n");
 
  // Host integration case A: record frame 1, abandon/reset the host command pool,
  // then cancel. Retry the identical frame_id using a fresh command buffer recording.
@@ -286,9 +359,25 @@ int main() {
   if (vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS) return 36;
   const AromaFGStatus reuse_status=aroma_fg_process(engine,&input,&output);
   if (reuse_status!=AROMA_FG_OK || output.generated_frames!=3) {
-   std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\n",
+   std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\\n",
     static_cast<unsigned long long>(input.frame_id),frame.frame_slot,reuse_status,output.generated_frames);
    return 37;
+  }
+  if (frame.frame_slot == 0) {
+   if (timing_status == AROMA_FG_OK) {
+    if (std::abs(output.preprocess_gpu_ms - timing.preprocess_gpu_ms) > 0.001f ||
+        std::abs(output.flow_gpu_ms - timing.flow_gpu_ms) > 0.001f ||
+        std::abs(output.synthesis_gpu_ms - timing.synthesis_gpu_ms) > 0.001f) {
+     std::printf("FRAME_OUTPUT_TIMING=FAIL previous slot timing was not propagated\\n");
+     return 43;
+    }
+    std::printf("FRAME_OUTPUT_TIMING=PASS source_frame=1 slot=0\\n");
+   } else if (timing_status == AROMA_FG_BYPASSED) {
+    std::printf("FRAME_OUTPUT_TIMING=SKIP reason=timestamp_queries_unavailable\\n");
+   } else {
+    std::printf("FRAME_OUTPUT_TIMING=FAIL collect_status=%d\\n", timing_status);
+    return 48;
+   }
   }
   if (vkEndCommandBuffer(cmd)!=VK_SUCCESS) {
    vkResetCommandPool(dev,pool,0);
@@ -308,7 +397,7 @@ int main() {
   const AromaFGStatus collect_status=aroma_fg_vulkan_backend_collect_timing(&backend,frame.frame_slot,&reuse_timing);
   if (collect_status!=AROMA_FG_OK && collect_status!=AROMA_FG_BYPASSED) return 42;
  }
- std::printf("RUNTIME_SLOT_REUSE=PASS slots=[1,0] fence_wait_before_pool_and_slot_reuse\\n");
+ std::printf("RUNTIME_SLOT_REUSE=PASS slots=[1,0] fence_wait_before_pool_and_slot_reuse\n");
  std::printf("FG status=%s generated=%u timing_status=%d preprocess_ms=%.3f flow_ms=%.3f synth_ms=%.3f phases=[%u,%u,%u][%u,%u,%u][%u,%u,%u]\n",
   pixel_ok?"PASS":"FAIL",output.generated_frames,timing_status,timing.preprocess_gpu_ms,timing.flow_gpu_ms,timing.synthesis_gpu_ms,
   r0,g0,b0,r1,g1,b1,r2,g2,b2);

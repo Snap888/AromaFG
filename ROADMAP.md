@@ -44,9 +44,23 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 - [x] CI build, transaction contract tests and full Vulkan graph on Mesa lavapipe with synchronization validation (run #42521641315).
 - [x] Add a separately compiled C client using the frozen pre-transaction V1 ABI header; CTest passes on lavapipe (run #42522045599).
 - [x] Add a real Vulkan host transaction test covering abandon/reset/cancel/retry/submit/commit/fence and command-pool reuse (run #42522045599; test backend double).
-- [x] Extend the full Vulkan FG runtime smoke test to use slot 1 and then reuse slot 0 only after each submission fence (Phase 3.2 CI pending).
-- [ ] Review/approve Phase 3 PR; test on a real Vulkan host and target Adreno/Turnip devices.
+- [x] Extend the full Vulkan FG runtime smoke test to use slot 1 and then reuse slot 0 only after each submission fence (run #42523914455; Mesa lavapipe).
+- [x] Add pinned Android NDK arm64-v8a cross-build and ADB smoke runner (Phase 3.3; Linux + Android arm64 CI PASS, runs #42565368872 and #42565464843).
+- [x] Run standalone direct-Termux Vulkan smoke on physical ASUS AI2205 / Snapdragon SM8550 / Adreno 740 using the system Vulkan implementation; record report for binary commit `fef098f` (validation layers off).
+- [x] Propagate the last collected per-slot GPU timings into the next `AromaFGFrameOutput`; add regression assertion and pass Linux + Android arm64 CI at `56fa273` / run #42702837268.
+- [ ] Re-run the updated `56fa273` Android artifact on the phone to validate timing propagation and capture `VkPhysicalDeviceDriverProperties`.
+- [ ] Identify the exact Vulkan driver and repeat with pinned Mesa Turnip revisions; test Qualcomm proprietary driver separately where available.
+- [ ] Review/approve Phase 3 PR stack; resolve PR #9 history divergence (7 commits ahead / 12 behind its current base).
+- [ ] Test borrowed-device integration with a real host/compositor; standalone smoke is not sufficient.
 - [ ] Define robust device-loss recovery and a complete output format conversion/fallback policy.
+
+## Phase 3.4 — borrowed-device host integration validation (next gate)
+
+- [ ] Add a host-owned Vulkan interop example that passes borrowed instance/device/queue/command buffer and host images through the public C API.
+- [ ] Verify command recording, submit/commit, abandon/reset/cancel, fence retirement and slot reuse without AromaFG-owned submission.
+- [ ] Run with Khronos validation + synchronization validation enabled where available.
+- [ ] Capture Vulkan driver properties, format features, queue limits and timestamp support.
+- [ ] Keep Winlator/DXVK adapter work blocked until the host-side sample and lifecycle contract pass.
 
 ## Phase 4 — lightweight Frame Generation MVP
 
@@ -59,15 +73,18 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 ## Phase 5 — Vulkan backend stabilization
 
 - [ ] Fix or redesign command-buffer cancellation and query/resource state tracking.
+- [x] Add regression coverage for last-completed per-slot timings in `AromaFGFrameOutput` (smoke assertion; CI run #42702837268).
+- [ ] Reduce full-resolution flow/seed intermediate memory; implement configurable flow resolution and reuse scratch buffers.
 - [ ] Add memory suballocation and memory-budget-aware resource pooling.
 - [ ] Add robust capability/format checks and device-loss recovery.
 - [ ] Validate descriptor/query slot reuse and resize on real drivers.
-- [ ] Add Android NDK builds and host-side device integration tests.
+- [ ] Add in-host Android AHardwareBuffer/synchronization integration tests.
 
 ## Phase 6 — Adreno / Turnip optimization
 
 - [ ] Test on named Adreno devices and pinned Turnip revisions.
-- [ ] Profile workgroup sizes, search radius, flow resolution and bandwidth.
+- [ ] Profile workgroup sizes, search radius, flow resolution and bandwidth at 720p/1080p/1440p on Adreno.
+- [ ] Establish a measured performance baseline beyond the 320×180 smoke workload.
 - [ ] Reduce intermediate image count and memory pressure.
 - [ ] Evaluate GMEM/tile behavior without assuming undocumented driver behavior.
 - [ ] Compare proprietary Qualcomm and Turnip paths.
