@@ -358,17 +358,26 @@ int main() {
   output={}; output.struct_size=sizeof(output);
   if (vkBeginCommandBuffer(cmd,&begin)!=VK_SUCCESS) return 36;
   const AromaFGStatus reuse_status=aroma_fg_process(engine,&input,&output);
-  if (frame.frame_slot == 0 && timing_status == AROMA_FG_OK &&
-      (std::abs(output.preprocess_gpu_ms - timing.preprocess_gpu_ms) > 0.001f ||
-       std::abs(output.flow_gpu_ms - timing.flow_gpu_ms) > 0.001f ||
-       std::abs(output.synthesis_gpu_ms - timing.synthesis_gpu_ms) > 0.001f)) {
-   std::printf("FRAME_OUTPUT_TIMING_FAIL previous slot timing was not propagated\n");
-   return 43;
-  }
   if (reuse_status!=AROMA_FG_OK || output.generated_frames!=3) {
-   std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\n",
+   std::printf("RUNTIME_SLOT_REUSE_FAIL frame=%llu slot=%u status=%d generated=%u\\n",
     static_cast<unsigned long long>(input.frame_id),frame.frame_slot,reuse_status,output.generated_frames);
    return 37;
+  }
+  if (frame.frame_slot == 0) {
+   if (timing_status == AROMA_FG_OK) {
+    if (std::abs(output.preprocess_gpu_ms - timing.preprocess_gpu_ms) > 0.001f ||
+        std::abs(output.flow_gpu_ms - timing.flow_gpu_ms) > 0.001f ||
+        std::abs(output.synthesis_gpu_ms - timing.synthesis_gpu_ms) > 0.001f) {
+     std::printf("FRAME_OUTPUT_TIMING=FAIL previous slot timing was not propagated\\n");
+     return 43;
+    }
+    std::printf("FRAME_OUTPUT_TIMING=PASS source_frame=1 slot=0\\n");
+   } else if (timing_status == AROMA_FG_BYPASSED) {
+    std::printf("FRAME_OUTPUT_TIMING=SKIP reason=timestamp_queries_unavailable\\n");
+   } else {
+    std::printf("FRAME_OUTPUT_TIMING=FAIL collect_status=%d\\n", timing_status);
+    return 48;
+   }
   }
   if (vkEndCommandBuffer(cmd)!=VK_SUCCESS) {
    vkResetCommandPool(dev,pool,0);
