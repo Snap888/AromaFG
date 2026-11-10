@@ -2,7 +2,7 @@
 
 **Aroma Frame Generation** is a clean-room, Vulkan-based optical-flow frame-generation library for Android (Qualcomm Adreno + Mesa Turnip/proprietary drivers), Winlator/WinNative, DXVK-based hosts and native renderers.
 
-> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. Feature branches contain the baseline Vulkan compute graph, host transaction hardening and fence-backed slot tests. CI includes Mesa lavapipe software execution and an Android arm64-v8a NDK cross-build. A standalone Vulkan smoke test has passed on a physical ASUS AI2205 / Snapdragon SM8550 / Adreno 740 using the system Vulkan implementation (validated binary commit `fef098f`). Khronos validation and synchronization validation were disabled; the report does not identify the driver as Turnip and does not validate a borrowed Winlator/game device. This is not yet a production-ready SDK.
+> **Development status: experimental Vulkan runtime milestone.** The main branch remains the portable C ABI/lifecycle bootstrap. Feature branches contain the baseline Vulkan compute graph, host transaction hardening and fence-backed slot tests. CI includes Mesa lavapipe software execution and an Android arm64-v8a NDK cross-build. A standalone Vulkan smoke test has passed on a physical ASUS AI2205 / Snapdragon SM8550 / Adreno 740 using the system Vulkan implementation (validated binary commit `fef098f`). Khronos validation and synchronization validation were disabled; the report does not identify the driver as Turnip and does not validate a borrowed Winlator/game device. The newer branch head `56fa273` adds a per-slot timing-output regression assertion and passes Linux + Android CI, but has not yet been rerun on the phone. This is not yet a production-ready SDK.
 
 ## Goals
 
@@ -79,6 +79,7 @@ Planned experiments include global-motion pre-warp (C1), edge-preserving flow re
 - [Vulkan host transaction contract](docs/vulkan-host-contract.md)
 - [Physical Adreno 740 smoke report (2026-11-09)](docs/physical-device-validation-2026-11-09.md)
 - [Repository audit (2026-11-09)](docs/audit-2026-11-09.md)
+- [Repository audit follow-up (2026-11-10)](docs/audit-2026-11-10.md)
 
 ## Build and test
 
