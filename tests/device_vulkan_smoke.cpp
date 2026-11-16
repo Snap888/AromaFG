@@ -402,6 +402,28 @@ int main() {
   pixel_ok?"PASS":"FAIL",output.generated_frames,timing_status,timing.preprocess_gpu_ms,timing.flow_gpu_ms,timing.synthesis_gpu_ms,
   r0,g0,b0,r1,g1,b1,r2,g2,b2);
  aroma_fg_destroy(engine);
+
+ // AromaFG borrows the host VkDevice/VkQueue and must never destroy them.
+ // Probe the same device after backend shutdown; this catches accidental
+ // ownership transfer in the Vulkan runtime destructor.
+ VkQueue queue_after_shutdown=VK_NULL_HANDLE;
+ vkGetDeviceQueue(dev,family,0,&queue_after_shutdown);
+ if(queue_after_shutdown!=queue || queue_after_shutdown==VK_NULL_HANDLE) {
+  std::printf("BORROWED_DEVICE_OWNERSHIP=FAIL queue changed after AromaFG shutdown\n");
+  return 49;
+ }
+ VkBufferCreateInfo ownership_probe_info{VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
+ ownership_probe_info.size=256;
+ ownership_probe_info.usage=VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+ ownership_probe_info.sharingMode=VK_SHARING_MODE_EXCLUSIVE;
+ VkBuffer ownership_probe=VK_NULL_HANDLE;
+ if(vkCreateBuffer(dev,&ownership_probe_info,nullptr,&ownership_probe)!=VK_SUCCESS) {
+  std::printf("BORROWED_DEVICE_OWNERSHIP=FAIL host device unusable after AromaFG shutdown\n");
+  return 50;
+ }
+ vkDestroyBuffer(dev,ownership_probe,nullptr);
+ std::printf("BORROWED_DEVICE_OWNERSHIP=PASS host VkDevice and VkQueue remain usable after backend shutdown\n");
+
  vkDestroyFence(dev,fence,nullptr);
  vkDestroyBuffer(dev,readback,nullptr);vkFreeMemory(dev,readback_mem,nullptr);
  destroy_image(dev,prev);destroy_image(dev,curr);for(auto& image:out_images_test)destroy_image(dev,image);
