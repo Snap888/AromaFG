@@ -56,6 +56,8 @@ Milestones are targets, not claims of implementation or hardware validation. Bra
 
 ## Phase 3.4 — borrowed-device host integration validation (next gate)
 
+- [x] Add a device-smoke regression proving the borrowed VkDevice/VkQueue remain usable after AromaFG backend shutdown (host fixture still creates the device; this is ownership coverage, not a Winlator integration).
+
 - [ ] Add a host-owned Vulkan interop example that passes borrowed instance/device/queue/command buffer and host images through the public C API.
 - [ ] Verify command recording, submit/commit, abandon/reset/cancel, fence retirement and slot reuse without AromaFG-owned submission.
 - [ ] Run with Khronos validation + synchronization validation enabled where available.
